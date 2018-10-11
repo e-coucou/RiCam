@@ -47,7 +47,9 @@ static const byte Lamp_c[8] = { 0, 35, 70, 105, 140, 175, 210, 255 };
 
 void setup() {
   // Put initialization like pinMode and begin functions here.
-
+  Wire.setSpeed(CLOCK_SPEED_100KHZ);
+  Wire.begin();
+  lampe.begin();
 }
 
 void loop() {
