@@ -30,6 +30,20 @@
 				        -|A0          D0|- SDA |
 				          \____________/ 
 */
+// NeoPixel
+#define LAMP_PIN D6
+#define LAMP_COUNT 16
+#define LAMP_TYPE SK6812RGBW
+Adafruit_NeoPixel lampe = Adafruit_NeoPixel(LAMP_COUNT, LAMP_PIN, LAMP_TYPE);
+void rainbow(uint8_t wait);
+uint32_t Wheel(byte WheelPos);
+uint16_t w = 0x0000;
+uint32_t neo_color,neo_mask,wait_start; // Neo_color : 0xWWGGRRBB
+char tour=0;
+char Lamp_w = 12;
+bool Lamp_on = false;
+static const byte Lamp_l[13] = { 0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 255 };
+static const byte Lamp_c[8] = { 0, 35, 70, 105, 140, 175, 210, 255 };
 
 void setup() {
   // Put initialization like pinMode and begin functions here.
