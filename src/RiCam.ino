@@ -44,12 +44,29 @@ char Lamp_w = 12;
 bool Lamp_on = false;
 static const byte Lamp_l[13] = { 0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 255 };
 static const byte Lamp_c[8] = { 0, 35, 70, 105, 140, 175, 210, 255 };
+#if defined TFT
+//--------------------------------------------- TFT  -------
+//--                                            -----
+// init variable ST7735 : afficheur TFT 1.8" w/SD Card
+#define dc      D2 
+#define cs      D4 
+#define rst     D5 
+#define sclk    A3
+#define sid     A5
+ST7735 tft = ST7735(cs, dc, rst); //l'affichage en mode MISO
+#endif
 
 void setup() {
   // Put initialization like pinMode and begin functions here.
   Wire.setSpeed(CLOCK_SPEED_100KHZ);
   Wire.begin();
   lampe.begin();
+#if defined TFT
+  init_tft();
+  copyright();
+
+  delay(3000);
+#endif
 }
 
 void loop() {
