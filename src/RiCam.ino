@@ -30,6 +30,7 @@
 				        -|A0          D0|- SDA |
 				          \____________/ 
 */
+String Mois[12] = {"JAN", "FEV", "MAR", "AVR", "MAI", "JUN", "JUI", "AOU", "SEP", "OCT", "NOV", "DEC"};
 // NeoPixel
 #define LAMP_PIN D6
 #define LAMP_COUNT 16
@@ -68,6 +69,11 @@ void setup() {
   delay(3000);
 #endif
 }
+
+volatile unsigned long now, start = 0, count =0, iteration=0;
+volatile int update = 0;
+bool tft_update=true;
+char szMessage[30];
 
 void loop() {
   // The core of your code will likely live here.
@@ -112,3 +118,96 @@ int Lamp_color(uint32_t color, uint32_t mask) {
     }
     lampe.show();
 }
+//-------------------------------------------------------- Gestion de l'écran TFT ----
+#if defined TFT
+void init_tft() {
+//    digitalWrite(POWER,HIGH);
+//    delay(30);
+    tft.initR(INITR_BLACKTAB);   // initialize a ST7735S chip, black tab
+    tft.setRotation(0x03);
+}
+void copyright() {
+    tft.fillScreen(ST7735_BLACK);// 19 19 70 - ST7735_BLACK);
+    tft.setCursor(0, 0);
+//    tft.setTextColor(tft.Color565(0xAC,0xEE,0xEE),tft.Color565(0x19,0x19,0x70));//,ST7735_BLACK);
+    tft.setTextColor(tft.Color565(0xAC,0xEE,0xEE),ST7735_BLACK);
+    tft.setTextWrap(true);
+    tft.println("Welcome @HOME. \n(c) e-Coucou 2017\n\nDemarrage du SYSTEME\nby rky ...");
+    // copyright
+    char szMess[50];
+    tft.setTextSize(1);
+    tft.setTextColor(0xEEEE,ST7735_BLACK);
+    tft.setCursor(0, 80);
+    sprintf(szMess,"(c)Rky %d.%d %02d:%02d %s",VERSION_MAJ,VERSION_MIN,Time.hour(),Time.minute(),WiFi.ready() ? "Wifi" : " - - ");
+    tft.print(szMess);
+}
+void aff_Heure() {
+    char szMess[20];
+    int heure = int(Time.hour());
+    int minute = int(Time.minute());
+    int seconde = int(Time.second());
+    sprintf(szMess,"%2d:%s%d",heure,minute>9 ? "":"0",minute);
+//    tft.fillRect(0,0,tft.width(),tft.height(),ST7735_BLACK);
+//    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE));
+//    tft.fillScreen(ST7735_BLACK);
+    tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
+    tft.setCursor(8,43);
+    tft.setTextSize(3);
+    tft.println(szMess);
+    tft.setCursor(105,43);
+    tft.setTextSize(1);
+    tft.println(String::format("%s%d",seconde>9 ? "":"0", seconde));
+    tft_update = false;
+}
+void aff_Date() {
+    char szMess[20];
+    int jour = int(Time.day());
+    int mois = int(Time.month());
+    int annee = int(Time.year());
+    sprintf(szMess,"%2d/%2d/%4d",jour,mois,annee);
+//    tft.fillRect(0,0,tft.width(),tft.height(),ST7735_BLACK);
+//    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE));
+//    tft.fillScreen(ST7735_BLACK);
+    tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
+    tft.setTextSize(1);
+    tft.setCursor(137,37);tft.println(String::format("%2d",jour));
+    tft.setCursor(133,47);tft.println(Mois[mois-1]);
+    tft.setCursor(130,57);tft.println(String::format("%2d",annee));
+//    tft.println(szMess);
+//    tft_update = false;
+}
+void aff_Click() {
+    char szMess[20];
+    sprintf(szMess,"CLICK");
+//    tft.fillRect(0,0,tft.width(),tft.height(),ST7735_BLACK);
+//    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE));
+    tft.fillScreen(ST7735_RED);
+    tft.setTextColor(ST7735_WHITE);
+    tft.setCursor(10,50);
+    tft.setTextSize(4);
+    tft.println(szMess);
+    tft_update = false;
+}
+void aff_Trame() {
+  tft.fillScreen(ST7735_BLACK);
+  tft.drawFastHLine(0,33,160,ST7735_WHITE);
+  tft.drawFastHLine(0,73,160,ST7735_WHITE);
+  tft.drawFastVLine(40,0,33,ST7735_WHITE);
+  tft.drawFastVLine(80,0,33,ST7735_WHITE);
+  tft.drawFastVLine(120,0,120,ST7735_WHITE);
+  tft.setTextColor(ST7735_BLUE,ST7735_BLACK);
+  tft.setTextSize(1);
+  tft.setCursor(1,121);
+  tft.println(String::format("%s %d.%d (%s)",AUTEUR,VERSION_MAJ,VERSION_MIN,RELEASE));
+  tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
+  tft.setCursor(125,1);
+//  tft.println(String::format("%5.1f",bytesRead/1024.0));
+  tft.setCursor(135,24);
+//  tft.println(String::format("%c",isPicture ? 'V' : 'x'));
+  aff_Date();
+//  getRequest();
+//  getBatterie();
+//  rainbow(20);
+//  Lamp_color(0x0,0xFFFF);
+}
+#endif
