@@ -79,6 +79,9 @@ void setup() {
 #endif
   rainbow(20);
   Lamp_color(0x0, 0xFFFF);
+  Particle.variable("luminosite",luminosite);
+  Particle.variable("illumination",illumination);
+  delay(3000);
 }
 
 volatile unsigned long now, start = 0, count =0, iteration=0;
@@ -94,7 +97,7 @@ void loop() {
   //--
     //-- Toutes les 500ms on récupère les infos de luminosité
     //-- 
-    if ((millis() % 500) >= 400) {
+    if ((millis() % 1000) >= 500) {
       tcs.getRawData(&red, &green, &blue, &clear);
       wh = clear;
       r = red/wh *256.0;
@@ -106,10 +109,10 @@ void loop() {
       // gestion d'alerte par proximité
       if ( (abs(illumination) < abs(0.5*illum_m)) && abs(illum_m < 30.0) ) {
          alert_illum = true;
-      }
+      } else { alert_illum = false;}
 //      Serial.println(String::format("Illumination : %f, luminosite : %f",illumination,luminosite));
-      Particle.publish("status", String::format("Illumination : %f, luminosite : %f",illumination,luminosite));
     }
+/*
   if (count<1000) {
       Lamp_color(0x11FF0000,0xAAAA);
   } else {
@@ -117,7 +120,16 @@ void loop() {
       if (count>2000)
         {count=0;}
   }
-
+*/
+    if (count > 5000) {
+        count = 0;
+        Particle.publish("status", String::format("Illumination : %f, luminosite : %f",illumination,luminosite));
+    }
+  if (alert_illum) {
+      Lamp_color(0x110000FF,0xFFFF);
+  } else {
+      Lamp_color(0x05000055,0xAAAA); 
+  }
 }
 //-------------------------------------------------------- Gestion des animations LAMPE ----
 void rainbow(uint8_t wait) {
