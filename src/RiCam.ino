@@ -1,5 +1,5 @@
 // Project RiCam
-#define TFT
+//#define TFT
 //#include "IO.h"
 #if defined TFT
   #include "tft.h"
@@ -59,6 +59,8 @@ ST7735 tft = ST7735(cs, dc, rst); //l'affichage en mode MISO
 
 void setup() {
   // Put initialization like pinMode and begin functions here.
+  Particle.publish("status", "by e-Coucou 2018");
+  Time.zone(+1);
   Wire.setSpeed(CLOCK_SPEED_100KHZ);
   Wire.begin();
   lampe.begin();
@@ -68,6 +70,8 @@ void setup() {
 
   delay(3000);
 #endif
+  rainbow(20);
+  Lamp_color(0x0, 0xFFFF);
 }
 
 volatile unsigned long now, start = 0, count =0, iteration=0;
@@ -77,6 +81,14 @@ char szMessage[30];
 
 void loop() {
   // The core of your code will likely live here.
+  count++;
+  if (count<1000) {
+      Lamp_color(0x11FF0000,0xAAAA);
+  } else {
+      Lamp_color(0x0,0xFFFF);
+      if (count>2000)
+        {count=0;}
+  }
 
 }
 //-------------------------------------------------------- Gestion des animations LAMPE ----
