@@ -31,6 +31,13 @@
 				          \____________/ 
 */
 String Mois[12] = {"JAN", "FEV", "MAR", "AVR", "MAI", "JUN", "JUI", "AOU", "SEP", "OCT", "NOV", "DEC"};
+// Surveillance
+double illum_m = 0;
+bool alert_illum  = false;
+double luminosite,illumination;  // mesure de la luminosite
+Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_24MS, TCS34725_GAIN_1X);
+uint16_t clear, red, green, blue;
+double r, g, b, wh;
 // NeoPixel
 #define LAMP_PIN D6
 #define LAMP_COUNT 16
@@ -81,7 +88,28 @@ char szMessage[30];
 
 void loop() {
   // The core of your code will likely live here.
-  count++;
+  now = millis(); count++;
+  //---------------------------------------------------------------- SENSORS ------
+  //-- Gestion des sensors
+  //--
+    //-- Toutes les 500ms on récupère les infos de luminosité
+    //-- 
+    if ((millis() % 500) >= 400) {
+      tcs.getRawData(&red, &green, &blue, &clear);
+      wh = clear;
+      r = red/wh *256.0;
+      g = green/wh *256.0;
+      b = blue/wh *256.0;
+      illumination =  (-0.32466 * red) + (1.57837 * green) + (-0.73191 * blue); //
+      illum_m = (illum_m * 11.0/12.0) + (illumination / 12.0);
+      luminosite = illum_m; /// pour debug
+      // gestion d'alerte par proximité
+      if ( (abs(illumination) < abs(0.5*illum_m)) && abs(illum_m < 30.0) ) {
+         alert_illum = true;
+      }
+//      Serial.println(String::format("Illumination : %f, luminosite : %f",illumination,luminosite));
+      Particle.publish("status", String::format("Illumination : %f, luminosite : %f",illumination,luminosite));
+    }
   if (count<1000) {
       Lamp_color(0x11FF0000,0xAAAA);
   } else {
