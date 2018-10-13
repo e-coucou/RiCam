@@ -1,3 +1,6 @@
 {
-    "C_Cpp.default.configurationProvider": "particle.particle-vscode-core"
+    "C_Cpp.default.configurationProvider": "particle.particle-vscode-core",
+    "particle.targetDevice": "4d0056000e51353532343635",
+    "particle.firmwareVersion": "0.8.0",
+    "git.ignoreLimitWarning": true
 }
