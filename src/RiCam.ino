@@ -85,7 +85,7 @@ void loop() {
   if (count<1000) {
       Lamp_color(0x11FF0000,0xAAAA);
   } else {
-      Lamp_color(0x0,0xFFFF);
+      Lamp_color(0x1100FF00,0x5555);
       if (count>2000)
         {count=0;}
   }
