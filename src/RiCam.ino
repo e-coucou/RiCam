@@ -6,7 +6,7 @@
 #endif
 //#include "Adafruit_10DOF_IMU.h"
 #include "neopixel.h"
-//#include "Adafruit_TCS34725.h"
+#include "Adafruit_TCS34725.h"
 // Version Information
 #define NAME "RiCam"
 #define AUTEUR "eCoucou"
