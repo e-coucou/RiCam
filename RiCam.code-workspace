@@ -5,7 +5,7 @@
         "files.associations": {
             "*.ino": "cpp"
         },
-        "particle.firmwareVersion": "0.7.0"
+        "particle.firmwareVersion": "0.8.0"
     },
     "folders": [
         {
