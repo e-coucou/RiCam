@@ -50,10 +50,11 @@ Adafruit_NeoPixel lampe = Adafruit_NeoPixel(LAMP_COUNT, LAMP_PIN, LAMP_TYPE);
 void rainbow(uint8_t wait);
 uint32_t Wheel(byte WheelPos);
 uint16_t w = 0x0000;
-uint32_t neo_color,neo_mask,wait_start; // Neo_color : 0xWWGGRRBB
+uint32_t Lamp_color,Lamp_mask=0xFFFF,wait_start; // Neo_color : 0xWWGGRRBB
 char tour=0;
 char Lamp_w = 12;
 bool Lamp_on = true;
+bool Lamp_auto = true;
 static const byte Lamp_l[13] = { 0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 255 };
 static const byte Lamp_c[8] = { 0, 35, 70, 105, 140, 175, 210, 255 };
 #if defined TFT
@@ -134,8 +135,12 @@ void loop() {
         count = 0;
         Particle.publish("status", String::format("Illumination : %f, luminosite : %f",illumination,luminosite));
     }
-  if (alert_illum & Lamp_on) {
-      Lamp_color(lumiere,0xFFFF);
+  if ( Lamp_on) {
+      if (Lamp_auto & alert_illum) {
+        Lamp_color(lumiere,0xFFFF);
+      } else {
+        Lamp_color(Lamp_color,Lamp_mask);
+      }
   } else {
       Lamp_color(0x0,0xFFFF); 
   }
@@ -296,14 +301,18 @@ int WebCde(String  Cde) {
     
     if (Cde.startsWith("coul"))  commande = 0xA0;
     if (Cde.startsWith("on"))  commande = 0xF0;
+    if (Cde.startsWith("auto"))  commande = 0xF1;
     switch (commande) {
         case 0xA0: // color,w,g,r,b
             commande  = arg[0] & 0xFF;
-//            neo_color = (arg[0] << 24) + (arg[1] << 16) + (arg[2] << 8) + arg[3];
+            Lamp_color = (arg[0] << 24) + (arg[1] << 16) + (arg[2] << 8) + arg[3];
             sprintf(szMess,"Change la couleur wgrb : %X:%X:%X:%X",arg[0],arg[1],arg[2],arg[3]);
             break;
         case 0xF0:// On/Off de la lampe
             Lamp_on = !Lamp_on;
+            break;
+        case 0xF1:// On/Off mode auto de la lampe
+            Lamp_auto = !Lamp_auto;
             break;
         default:
             break;
