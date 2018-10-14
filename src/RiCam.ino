@@ -32,6 +32,7 @@
 */
 // ---- Commande Web
 int WebCde(String Cde);
+bool serial_on;
 
 String Mois[12] = {"JAN", "FEV", "MAR", "AVR", "MAI", "JUN", "JUI", "AOU", "SEP", "OCT", "NOV", "DEC"};
 // Surveillance
