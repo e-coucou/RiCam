@@ -50,7 +50,7 @@ Adafruit_NeoPixel lampe = Adafruit_NeoPixel(LAMP_COUNT, LAMP_PIN, LAMP_TYPE);
 void rainbow(uint8_t wait);
 uint32_t Wheel(byte WheelPos);
 uint16_t w = 0x0000;
-uint32_t Lamp_color,Lamp_mask=0xFFFF,wait_start; // Neo_color : 0xWWGGRRBB
+uint32_t Lamp_couleur,Lamp_mask=0xFFFF,wait_start; // Neo_color : 0xWWGGRRBB
 char tour=0;
 char Lamp_w = 12;
 bool Lamp_on = true;
@@ -139,7 +139,7 @@ void loop() {
       if (Lamp_auto & alert_illum) {
         Lamp_color(lumiere,0xFFFF);
       } else {
-        Lamp_color(Lamp_color,Lamp_mask);
+        Lamp_color(Lamp_couleur,Lamp_mask);
       }
   } else {
       Lamp_color(0x0,0xFFFF); 
@@ -305,7 +305,7 @@ int WebCde(String  Cde) {
     switch (commande) {
         case 0xA0: // color,w,g,r,b
             commande  = arg[0] & 0xFF;
-            Lamp_color = (arg[0] << 24) + (arg[1] << 16) + (arg[2] << 8) + arg[3];
+            Lamp_couleur = (arg[0] << 24) + (arg[1] << 16) + (arg[2] << 8) + arg[3];
             sprintf(szMess,"Change la couleur wgrb : %X:%X:%X:%X",arg[0],arg[1],arg[2],arg[3]);
             break;
         case 0xF0:// On/Off de la lampe
