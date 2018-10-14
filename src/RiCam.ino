@@ -312,11 +312,11 @@ int WebCde(String  Cde) {
             break;
         case 0xF0:// On/Off de la lampe
             Lamp_on = !Lamp_on;
-            sprintf(szMess,"Switch on/off %b",Lamp_on);
+            sprintf(szMess,"Switch on/off %B",Lamp_on);
             break;
         case 0xF1:// On/Off mode auto de la lampe
             Lamp_auto = !Lamp_auto;
-            sprintf(szMess,"Switch mode auto %b",Lamp_auto);
+            sprintf(szMess,"Switch mode auto %B",Lamp_auto);
             break;
         default:
             break;
