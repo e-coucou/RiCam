@@ -306,13 +306,17 @@ int WebCde(String  Cde) {
         case 0xA0: // color,w,g,r,b
             commande  = arg[0] & 0xFF;
             Lamp_couleur = (arg[0] << 24) + (arg[1] << 16) + (arg[2] << 8) + arg[3];
+            Lamp_auto = false;
+            Lamp_on = true;
             sprintf(szMess,"Change la couleur wgrb : %X:%X:%X:%X",arg[0],arg[1],arg[2],arg[3]);
             break;
         case 0xF0:// On/Off de la lampe
             Lamp_on = !Lamp_on;
+            sprintf(szMess,"Switch on/off %b",Lamp_on);
             break;
         case 0xF1:// On/Off mode auto de la lampe
             Lamp_auto = !Lamp_auto;
+            sprintf(szMess,"Switch mode auto %b",Lamp_auto);
             break;
         default:
             break;
@@ -321,5 +325,6 @@ int WebCde(String  Cde) {
       Serial.println("WebCde : reception WebCommande -> ");
       Serial.println(szMess);
     }
+    Particle.publish("Status", szMess);
     return commande;
 } // end WebCde
