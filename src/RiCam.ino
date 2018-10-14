@@ -30,6 +30,9 @@
 				        -|A0          D0|- SDA |
 				          \____________/ 
 */
+// ---- Commande Web
+int WebCde(String Cde);
+
 String Mois[12] = {"JAN", "FEV", "MAR", "AVR", "MAI", "JUN", "JUI", "AOU", "SEP", "OCT", "NOV", "DEC"};
 // Surveillance
 double illum_m = 0;
@@ -49,7 +52,7 @@ uint16_t w = 0x0000;
 uint32_t neo_color,neo_mask,wait_start; // Neo_color : 0xWWGGRRBB
 char tour=0;
 char Lamp_w = 12;
-bool Lamp_on = false;
+bool Lamp_on = true;
 static const byte Lamp_l[13] = { 0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 255 };
 static const byte Lamp_c[8] = { 0, 35, 70, 105, 140, 175, 210, 255 };
 #if defined TFT
@@ -71,6 +74,8 @@ void setup() {
   Wire.setSpeed(CLOCK_SPEED_100KHZ);
   Wire.begin();
   lampe.begin();
+  // Start WebCommande
+  bool success = Particle.function("Cde",WebCde);
 #if defined TFT
   init_tft();
   copyright();
@@ -86,6 +91,7 @@ void setup() {
 
 volatile unsigned long now, start = 0, count =0, iteration=0;
 volatile int update = 0;
+uint32_t lumiere=0x0;
 bool tft_update=true;
 char szMessage[30];
 
@@ -107,8 +113,10 @@ void loop() {
       illum_m = (illum_m * 11.0/12.0) + (illumination / 12.0);
       luminosite = illum_m; /// pour debug
       // gestion d'alerte par proximité
-      if ( (abs(illumination) < abs(0.5*illum_m)) && abs(illum_m < 30.0) ) {
+//      if ( (abs(illumination) < abs(0.5*illum_m)) && abs(illum_m < 30.0) ) {
+      if (abs(illumination <=200.0)) {
          alert_illum = true;
+         lumiere = (0xFF - uint8_t(illumination)) << 24;
       } else { alert_illum = false;}
 //      Serial.println(String::format("Illumination : %f, luminosite : %f",illumination,luminosite));
     }
@@ -121,14 +129,14 @@ void loop() {
         {count=0;}
   }
 */
-    if (count > 5000) {
+    if (count > 10000) {
         count = 0;
         Particle.publish("status", String::format("Illumination : %f, luminosite : %f",illumination,luminosite));
     }
-  if (alert_illum) {
-      Lamp_color(0x110000FF,0xFFFF);
+  if (alert_illum & Lamp_on) {
+      Lamp_color(lumiere,0xFFFF);
   } else {
-      Lamp_color(0x05000055,0xAAAA); 
+      Lamp_color(0x0,0xFFFF); 
   }
 }
 //-------------------------------------------------------- Gestion des animations LAMPE ----
@@ -263,3 +271,58 @@ void aff_Trame() {
 //  Lamp_color(0x0,0xFFFF);
 }
 #endif
+//------------------------------------------------------------------ Web Commande ------
+//--                                                                 ------------
+int WebCde(String  Cde) {
+    
+    unsigned char commande=0;
+    char szMess[30];
+
+    int index = Cde.indexOf('=');
+    char inputStr[64];
+    Cde.toCharArray(inputStr,64);
+    char *p = strtok(inputStr," ,.-=");
+    p = strtok(NULL, " ,.-=");
+    int arg[10];
+    String arg_s[10];
+    int i=0;
+    serial_on = Serial.isConnected();
+    while (p != NULL)
+    {
+        arg[i++] = atoi(p);// & 0xFF;
+        p = strtok (NULL, " ,.-");
+    }
+    
+    if (Cde.startsWith("coul"))  commande = 0xA0;
+    if (Cde.startsWith("on"))  commande = 0xF0;
+    if (Cde.startsWith("resol"))  commande = 0xB0;
+    if (Cde.startsWith("repet"))  commande = 0xB1;
+    switch (commande) {
+        case 0xA0: // color,w,g,r,b
+            commande  = arg[0] & 0xFF;
+//            neo_color = (arg[0] << 24) + (arg[1] << 16) + (arg[2] << 8) + arg[3];
+            sprintf(szMess,"Change la couleur wgrb : %X:%X:%X:%X",arg[0],arg[1],arg[2],arg[3]);
+            break;
+        case 0xF0:// On/Off de la lampe
+            Lamp_on = !Lamp_on;
+            break;
+        case 0xB0: // resolution,d -> 0 (320) à 4 (12)
+            commande  = arg[0] & 0xFF;
+            Param.resolution = min(max(arg[0],0),4); // résolution entre 0 et 4 de la plus basse à la plus haute
+            sprintf(szMess,"Resolution de l'image du -0 au ++4 : %d",arg[0]);
+            break;
+        case 0xB1: // tempo,s -> s en seconde avec mini à 2s et maxi à ...
+            commande  = arg[0] & 0xFF;
+            Param.timeout = max( arg[0], 2)*1000; // pas moins de 2s
+            sprintf(szMess,"Repetition photo toutes les %d secondes",arg[0]);
+            break;
+        default:
+            break;
+    }
+    if (serial_on) {
+      Serial.println("WebCde : reception WebCommande -> ");
+      Serial.println(szMess);
+    }
+    Param.version++;
+    return commande;
+} // end WebCde
