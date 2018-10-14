@@ -72,6 +72,8 @@ void setup() {
   // Put initialization like pinMode and begin functions here.
   Particle.publish("status", "by e-Coucou 2018");
   Time.zone(+1);
+  Particle.variable("luminosite",luminosite);
+  Particle.variable("illumination",illumination);
   Wire.setSpeed(CLOCK_SPEED_100KHZ);
   Wire.begin();
   lampe.begin();
@@ -85,8 +87,6 @@ void setup() {
 #endif
   rainbow(20);
   Lamp_color(0x0, 0xFFFF);
-  Particle.variable("luminosite",luminosite);
-  Particle.variable("illumination",illumination);
   delay(3000);
 }
 
