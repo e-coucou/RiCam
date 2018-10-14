@@ -311,6 +311,5 @@ int WebCde(String  Cde) {
       Serial.println("WebCde : reception WebCommande -> ");
       Serial.println(szMess);
     }
-    Param.version++;
     return commande;
 } // end WebCde
