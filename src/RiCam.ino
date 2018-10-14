@@ -295,8 +295,6 @@ int WebCde(String  Cde) {
     
     if (Cde.startsWith("coul"))  commande = 0xA0;
     if (Cde.startsWith("on"))  commande = 0xF0;
-    if (Cde.startsWith("resol"))  commande = 0xB0;
-    if (Cde.startsWith("repet"))  commande = 0xB1;
     switch (commande) {
         case 0xA0: // color,w,g,r,b
             commande  = arg[0] & 0xFF;
@@ -305,16 +303,6 @@ int WebCde(String  Cde) {
             break;
         case 0xF0:// On/Off de la lampe
             Lamp_on = !Lamp_on;
-            break;
-        case 0xB0: // resolution,d -> 0 (320) à 4 (12)
-            commande  = arg[0] & 0xFF;
-            Param.resolution = min(max(arg[0],0),4); // résolution entre 0 et 4 de la plus basse à la plus haute
-            sprintf(szMess,"Resolution de l'image du -0 au ++4 : %d",arg[0]);
-            break;
-        case 0xB1: // tempo,s -> s en seconde avec mini à 2s et maxi à ...
-            commande  = arg[0] & 0xFF;
-            Param.timeout = max( arg[0], 2)*1000; // pas moins de 2s
-            sprintf(szMess,"Repetition photo toutes les %d secondes",arg[0]);
             break;
         default:
             break;
