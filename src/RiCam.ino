@@ -82,7 +82,7 @@ void setup() {
   bool success = Particle.function("Cde",WebCde);
 #if defined TFT
   init_tft();
-  copyright();
+//  copyright();
 
   delay(3000);
 #endif
