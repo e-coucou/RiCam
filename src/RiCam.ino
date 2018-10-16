@@ -72,7 +72,7 @@ ST7735 tft = ST7735(cs, dc, rst); //l'affichage en mode MISO
 void setup() {
   // Put initialization like pinMode and begin functions here.
   Particle.publish("status", "by e-Coucou 2018");
-  Time.zone(+1);
+  Time.zone(+2);
   Particle.variable("luminosite",luminosite);
   Particle.variable("illumination",illumination);
   Wire.setSpeed(CLOCK_SPEED_100KHZ);
@@ -200,13 +200,13 @@ void copyright() {
 //    tft.setTextColor(tft.Color565(0xAC,0xEE,0xEE),tft.Color565(0x19,0x19,0x70));//,ST7735_BLACK);
     tft.setTextColor(tft.Color565(0xAC,0xEE,0xEE),ST7735_BLACK);
     tft.setTextWrap(true);
-    tft.println("Welcome @HOME. \n(c) e-Coucou 2017\n\nDemarrage du SYSTEME\nby rky ...");
+    tft.println("Welcome @RiCam. \n(c) e-Coucou 2018\n\nDemarrage du SYSTEME\nby rky ...");
     // copyright
     char szMess[50];
     tft.setTextSize(1);
     tft.setTextColor(0xEEEE,ST7735_BLACK);
     tft.setCursor(0, 80);
-    sprintf(szMess,"(c)Rky %d.%d %02d:%02d %s",VERSION_MAJ,VERSION_MIN,Time.hour(),Time.minute(),WiFi.ready() ? "Wifi" : " - - ");
+    sprintf(szMess,"(c)Rky - RiCam %d.%d %02d:%02d\n%s",VERSION_MAJ,VERSION_MIN,Time.hour(),Time.minute(),WiFi.ready() ? "Wifi" : " - - ");
     tft.print(szMess);
 }
 void aff_Heure() {
