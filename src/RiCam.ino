@@ -22,10 +22,10 @@
 				        -|RX         GND|-
 				        -|WKP         D7|-
 				        -|DAC         D6|- NeoPixel Ring
-	SID	  |  MOSI -|A5          D5|- RST | TFT
-		    |  MISO -|A4          D4|- CS  | TFT
-	SCL	  |  SCHK	-|A3          D3|- ALERT interrupt from MAX17043 (optional solder bridge)
-   Arducam | SS -|A2          D2|- DC  | TFT
+	     SID  |  MOSI   -|A5          D5|- RST | TFT
+		      |  MISO   -|A4          D4|- CS  | TFT
+	 SCL	  |  SCHK	-|A3          D3|- ALERT interrupt from MAX17043 (optional solder bridge)
+           Arducam | SS -|A2          D2|- DC  | TFT
 				        -|A1          D1|- SCL |- I2C channel + Gyro
 				        -|A0          D0|- SDA |
 				          \____________/ 
@@ -80,8 +80,10 @@ void setup() {
   lampe.begin();
   // Start WebCommande
   bool success = Particle.function("Cde",WebCde);
+  // initialize SPI:
+  SPI.begin();
 #if defined TFT
-  init_tft();
+//  init_tft();
 //  copyright();
 
   delay(3000);
