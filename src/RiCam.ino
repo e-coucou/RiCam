@@ -81,6 +81,9 @@ void setup() {
   // Start WebCommande
   bool success = Particle.function("Cde",WebCde);
   // initialize SPI:
+  rainbow(20);
+  Lamp_color(0x0, 0xFFFF);
+  delay(3000);
   SPI.begin();
 #if defined TFT
   init_tft();
@@ -88,9 +91,6 @@ void setup() {
 
   delay(3000);
 #endif
-  rainbow(20);
-  Lamp_color(0x0, 0xFFFF);
-  delay(3000);
 }
 
 volatile unsigned long now, start = 0, count =0, iteration=0;
