@@ -83,8 +83,8 @@ void setup() {
   // initialize SPI:
   SPI.begin();
 #if defined TFT
-//  init_tft();
-//  copyright();
+  init_tft();
+  copyright();
 
   delay(3000);
 #endif
