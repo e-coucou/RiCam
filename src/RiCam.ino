@@ -1,5 +1,5 @@
 // Project RiCam
-//#define TFT
+#define TFT
 //#include "IO.h"
 #if defined TFT
   #include "tft.h"
