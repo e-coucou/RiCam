@@ -68,7 +68,12 @@ static const byte Lamp_c[8] = { 0, 35, 70, 105, 140, 175, 210, 255 };
 #define sid     A5
 ST7735 tft = ST7735(cs, dc, rst); //l'affichage en mode MISO
 #endif
-
+Timer tm_cloud(20000,Cloud);
+bool tm_b_cloud = false;
+//--------------------- timer CLOUD : every x sec. ---
+void Cloud() {
+    tm_b_cloud = true;
+}
 void setup() {
   // Put initialization like pinMode and begin functions here.
   Particle.publish("status", "by e-Coucou 2018");
@@ -88,9 +93,9 @@ void setup() {
 #if defined TFT
   init_tft();
   copyright();
-
   delay(3000);
 #endif
+  tm_cloud.start();
 }
 
 volatile unsigned long now, start = 0, count =0, iteration=0;
@@ -98,7 +103,7 @@ volatile int update = 0;
 uint32_t lumiere=0x0;
 bool tft_update=true;
 char szMessage[30];
-
+//--------------------------------------------------------------------------------
 void loop() {
   // The core of your code will likely live here.
   now = millis(); count++;
@@ -146,6 +151,63 @@ void loop() {
   } else {
       Lamp_color(0x0,0xFFFF); 
   }
+   //-------------------------------------------------------------- CLOUD -------
+    //-- Cloud / WebHook
+    //--
+    //-- le timer Cloud() monte le booléen tm_b_cloud pour la lecteur des sensors
+    //-- les infos sont transférés sur le cloud 1 par 1 pour ne pas saturer la funcion Publish (évite mode burst)
+    //-- webhook : toutes les variables commencent par Rky_
+    //--
+    if (tm_b_cloud) {
+        /*
+        bme_t = (double)bme.readTemperature();
+        bme_h = (double)bme.readHumidity();
+        bme_p = (double)bme.readPressure()/100.0;
+        bme_a = (double)bme.readAltitude(SEALEVELPRESSURE_HPA);
+        */
+//        battery = digitalRead(BATTERY);
+//        if (battery == LOW) digitalWrite(D7,HIGH);
+        switch(tm_cloud_rot++) {
+            case 0x00 :
+                //Particle.publish("Rky_I",String(illumination),60,PUBLIC);
+                break;
+            case 0x01 :
+                //Particle.publish("Rky_r",String(red),60,PUBLIC);
+                break;
+            case 0x02 :
+                //Particle.publish("Rky_g",String(green),60,PUBLIC);
+                break;
+            case 0x03 :
+                //Particle.publish("Rky_b",String(blue),60,PUBLIC);
+                break;
+            case 0x04 :
+                //Particle.publish("Rky_N",String(noise),60,PUBLIC);
+                break;
+            case 0x05 :
+                Particle.publish("Rky_Lu",String(luminosite),60,PUBLIC);
+                break;
+            case 0x06 :
+                //Particle.publish("Rky_Pi",String(pitch),60,PUBLIC);
+                break;
+            case 0x07 :
+                //Particle.publish("Rky_Ro",String(roll),60,PUBLIC);
+                break;
+            case 0x08 :
+                //Particle.publish("Rky_T",String(bme_t),60,PUBLIC);
+                break;
+            case 0x09 :
+                //Particle.publish("Rky_H",String(bme_h),60,PUBLIC);
+                break;
+            case 0x0A :
+                //Particle.publish("Rky_P",String(bme_p),60,PUBLIC);
+                break;
+            case 0x0B :
+                //Particle.publish("Rky_A",String(bme_a),60,PUBLIC);
+                break;
+        }
+        tm_cloud_rot %= 12; // car 12 sensors publiés dans le cloud
+        tm_b_cloud = false;
+    } // end Cloud
 }
 //-------------------------------------------------------- Gestion des animations LAMPE ----
 void rainbow(uint8_t wait) {
@@ -302,6 +364,7 @@ int WebCde(String  Cde) {
     }
     
     if (Cde.startsWith("coul"))  commande = 0xA0;
+    if (Cde.startsWith("mess"))  commande = 0xB0;
     if (Cde.startsWith("on"))  commande = 0xF0;
     if (Cde.startsWith("auto"))  commande = 0xF1;
     switch (commande) {
@@ -311,6 +374,9 @@ int WebCde(String  Cde) {
             Lamp_auto = false;
             Lamp_on = true;
             sprintf(szMess,"Change la couleur wgrb : %X:%X:%X:%X",arg[0],arg[1],arg[2],arg[3]);
+            break;
+        case 0xB0: // affiche un message sur l'écran
+            sprintf(szMess,"%s",arg[0]);
             break;
         case 0xF0:// On/Off de la lampe
             Lamp_on = !Lamp_on;
