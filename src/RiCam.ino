@@ -70,6 +70,7 @@ ST7735 tft = ST7735(cs, dc, rst); //l'affichage en mode MISO
 #endif
 Timer tm_cloud(20000,Cloud);
 bool tm_b_cloud = false;
+int tm_cloud_rot = 0x00;
 //--------------------- timer CLOUD : every x sec. ---
 void Cloud() {
     tm_b_cloud = true;
