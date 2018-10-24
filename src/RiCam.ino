@@ -124,9 +124,10 @@ void loop() {
       luminosite = illum_m; /// pour debug
       // gestion d'alerte par proximité
 //      if ( (abs(illumination) < abs(0.5*illum_m)) && abs(illum_m < 30.0) ) {
-      if (abs(illumination <=200.0)) {
+      lumiere = 0x0;
+      if (abs(illumination <=15.0)) {
          alert_illum = true;
-         lumiere = (0xFF - uint8_t(illumination)) << 24;
+         lumiere = (0xFF - uint8_t(illumination)/15*255) << 24;
       } else { alert_illum = false;}
 //      Serial.println(String::format("Illumination : %f, luminosite : %f",illumination,luminosite));
     }
@@ -170,7 +171,7 @@ void loop() {
 //        if (battery == LOW) digitalWrite(D7,HIGH);
         switch(tm_cloud_rot++) {
             case 0x00 :
-                //Particle.publish("Rky_I",String(illumination),60,PUBLIC);
+                Particle.publish("Rky_I",String(illumination),60,PUBLIC);
                 break;
             case 0x01 :
                 //Particle.publish("Rky_r",String(red),60,PUBLIC);
@@ -203,7 +204,7 @@ void loop() {
                 //Particle.publish("Rky_P",String(bme_p),60,PUBLIC);
                 break;
             case 0x0B :
-                //Particle.publish("Rky_A",String(bme_a),60,PUBLIC);
+                Particle.publish("Rky_Lm",String(lumiere),60,PUBLIC);
                 break;
         }
         tm_cloud_rot %= 12; // car 12 sensors publiés dans le cloud
