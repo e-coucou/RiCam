@@ -4,7 +4,7 @@
 #if defined TFT
   #include "tft.h"
 #endif
-//#include "Adafruit_10DOF_IMU.h"
+#include "Adafruit_10DOF_IMU.h"
 #include "neopixel.h"
 #include "Adafruit_TCS34725.h"
 // Version Information
@@ -35,6 +35,20 @@ int WebCde(String Cde);
 bool serial_on;
 
 String Mois[12] = {"JAN", "FEV", "MAR", "AVR", "MAI", "JUN", "JUI", "AOU", "SEP", "OCT", "NOV", "DEC"};
+struct stParam {
+  uint8_t version, resolution;
+  unsigned long timeout;
+};
+stParam Param = {1,0,60000};
+
+struct stAccuWeather {
+  float Temperature,Vitesse;
+  String ciel;
+  String Sens;
+  int Direction,Humidite;
+  bool jour, data;
+};
+stAccuWeather Meteo;
 // Surveillance
 double illum_m = 0;
 bool alert_illum  = false;
