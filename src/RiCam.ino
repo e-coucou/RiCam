@@ -82,6 +82,14 @@ static const byte Lamp_c[8] = { 0, 35, 70, 105, 140, 175, 210, 255 };
 #define sid     A5
 ST7735 tft = ST7735(cs, dc, rst); //l'affichage en mode MISO
 #endif
+//--------------------------------------------- Capteurs  -------
+//--                                            -------
+Adafruit_BMP085_Unified       bmp   = Adafruit_BMP085_Unified(18001);
+Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(30301);
+Adafruit_LSM303_Mag_Unified   mag   = Adafruit_LSM303_Mag_Unified(30302);
+Adafruit_L3GD20_Unified       gyro  = Adafruit_L3GD20_Unified(20);
+sensor_t sensor;
+//--
 Timer tm_cloud(20000,Cloud);
 bool tm_b_cloud = false;
 int tm_cloud_rot = 0x00;
@@ -89,6 +97,15 @@ int tm_cloud_rot = 0x00;
 void Cloud() {
     tm_b_cloud = true;
 }
+HttpClient http;  
+http_header_t headers[] = {  
+    { "Content-Type", "application/json" },  
+    { "Accept" , "application/json" },
+    { NULL, NULL }   
+ };  
+http_request_t request;  
+http_response_t response;  
+//------------------------------------------------------------------ setp --
 void setup() {
   // Put initialization like pinMode and begin functions here.
   Particle.publish("status", "by e-Coucou 2018");
@@ -111,6 +128,11 @@ void setup() {
   delay(3000);
 #endif
   tm_cloud.start();
+  // les capteurs ...
+    bmp.begin();
+    gyro.begin();
+    accel.begin();
+    mag.begin();
 }
 
 volatile unsigned long now, start = 0, count =0, iteration=0;
