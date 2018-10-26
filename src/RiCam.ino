@@ -11,7 +11,7 @@
 #define NAME "RiCam"
 #define AUTEUR "eCoucou"
 #define VERSION_MAJ 0
-#define VERSION_MIN 1
+#define VERSION_MIN 2
 #define RELEASE "oct. 2018"
 #define CREATE "oct. 2018"
 /* 
