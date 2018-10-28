@@ -194,7 +194,7 @@ void loop() {
       getRequest();
       tm_b_aff = false;
       if (Meteo.data) {
-            aff_Status(120,1,Meteo.temperature);
+            aff_Status(120,1,String::format("%5.1f C",Meteo.Temperature));
             aff_Status(120,40,Meteo.ciel);
       }
   }
@@ -322,8 +322,9 @@ void aff_Heure() { //128x160
     int heure = int(Time.hour());
     int minute = int(Time.minute());
     int seconde = int(Time.second());
-    tft.setTextColor(tft.Color565(0x40,0x40,0x40),ST7735_BLACK);
     tft.fillScreen(ST7735_BLACK);
+    aff_Entete();
+    tft.setTextColor(tft.Color565(0x40,0x40,0x40),ST7735_BLACK);
     tft.setTextSize(3);
     tft.setCursor(60,40);tft.println(String::format("%s%d",heure>9 ? "":"0",heure));
     tft.setCursor(60,65);tft.println(String::format("%s%d",minute>9 ? "":"0",minute));
@@ -348,6 +349,13 @@ void aff_Status(uint8_t ligne, uint8_t colonne,String szMess) { //128x160
     tft.setCursor(colonne,ligne);
     tft.setTextSize(1);
     tft.println(szMess);
+    tft_update = false;
+}
+void aff_Entete() { //128x160
+    tft.setTextColor(tft.Color565(0x200,0x30,0x0),ST7735_BLACK);
+    tft.setCursor(1,1);
+    tft.setTextSize(1);
+    tft.println("RiCam");
     tft_update = false;
 }
 void aff_Date() {
@@ -418,7 +426,7 @@ void getRequest() {
   tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
   tft.setTextSize(1);
   tft.println(response.status);*/
-  aff_Status(1,129,response.status);
+  aff_Status(1,129,String::format("%d",response.status));
   //  Serial.println(request.url);
   //  Serial.println(response.status);
   //  Serial.println(response.body);
