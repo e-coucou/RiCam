@@ -191,8 +191,12 @@ void loop() {
       Lamp_color(0x0,0xFFFF); 
   }
   if (tm_b_aff) {
-      aff_Heure();
+      getRequest();
       tm_b_aff = false;
+      if (Meteo.data) {
+            aff_Status(120,1,Meteo.temperature);
+            aff_Status(120,40,Meteo.ciel);
+      }
   }
    //-------------------------------------------------------------- CLOUD -------
     //-- Cloud / WebHook
@@ -339,6 +343,13 @@ void aff_Seconde() { //128x160
     }
     tft_update = false;
 }
+void aff_Status(uint8_t ligne, uint8_t colonne,String szMess) { //128x160
+    tft.setTextColor(tft.Color565(0x20,0x20,0x20),ST7735_BLACK);
+    tft.setCursor(colonne,ligne);
+    tft.setTextSize(1);
+    tft.println(szMess);
+    tft_update = false;
+}
 void aff_Date() {
 //    char szMess[20];
     int jour = int(Time.day());
@@ -376,7 +387,7 @@ void aff_Trame() {
 //  tft.drawFastVLine(40,0,33,ST7735_WHITE);
 //  tft.drawFastVLine(80,0,33,ST7735_WHITE);
 //  tft.drawFastVLine(120,0,120,ST7735_WHITE);
-  tft.setTextColor(ST7735_LIGHT_GREY,ST7735_BLACK);
+  tft.setTextColor(tft.Color565(0x40,0x40,0x40),ST7735_BLACK);
   tft.setTextSize(1);
   tft.setCursor(1,121);
   tft.println(String::format("%s %d.%d (%s)",AUTEUR,VERSION_MAJ,VERSION_MIN,RELEASE));
@@ -401,15 +412,16 @@ void getRequest() {
   request.path = "/currentconditions/v1/623.json?language=en&details=false&apikey=hoArfRosT1215"; //OU3bvqL9RzlrtSqXAJwg93E1Tlo3grVS";  
   request.path = "/currentconditions/v1/623.json?language=fr-fr&details=true&apikey=hoArfRosT1215"; //from inetnet
   request.body = "";
-   
   http.get(request, response, headers);
+  /*
   tft.setCursor(129,78);
   tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
   tft.setTextSize(1);
-  tft.println(response.status);
-//  Serial.println(request.url);
-//  Serial.println(response.status);
-//  Serial.println(response.body);
+  tft.println(response.status);*/
+  aff_Status(1,129,response.status);
+  //  Serial.println(request.url);
+  //  Serial.println(response.status);
+  //  Serial.println(response.body);
   if (response.status == 200) { 
     String key1 = "WeatherText";
     Meteo.ciel = KeyJson(key1 , response.body);
@@ -418,7 +430,7 @@ void getRequest() {
     Meteo.Temperature = atof(KeyJson("Value",jsonTemp).c_str());
     Meteo.Humidite = atoi(KeyJson("RelativeHumidity",response.body).c_str());
     jsonTemp = KeyJson("Wind" , response.body);
-//    Serial.println(jsonTemp);
+  //    Serial.println(jsonTemp);
     Meteo.Direction = atoi(KeyJson("Degrees", jsonTemp).c_str());
     Meteo.Sens = KeyJson("Localized", response.body);
     jsonTemp = KeyJson("Speed" , response.body);
@@ -439,14 +451,14 @@ void getRequest() {
 
 String KeyJson(const String& k, const String& j){
   int keyStartsAt = j.indexOf(k);
-//  Serial.println( keyStartsAt );
+  //  Serial.println( keyStartsAt );
   int keyEndsAt = keyStartsAt + k.length(); // inludes double quote
-//  Serial.println( keyEndsAt );
+  //  Serial.println( keyEndsAt );
   int colonPosition = j.indexOf(":", keyEndsAt);
   int valueEndsAt = j.indexOf(",", colonPosition);
   String val = j.substring(colonPosition + 1, valueEndsAt);
   val.trim();
-//  Serial.println( val );
+  //  Serial.println( val );
   return val;
 }
 //------------------------------------------------------------------ Web Commande ------
