@@ -7,6 +7,7 @@
 #include "Adafruit_10DOF_IMU.h"
 #include "neopixel.h"
 #include "Adafruit_TCS34725.h"
+#include "HttpClient.h"
 // Version Information
 #define NAME "RiCam"
 #define AUTEUR "eCoucou"
@@ -93,9 +94,14 @@ sensor_t sensor;
 Timer tm_cloud(20000,Cloud);
 bool tm_b_cloud = false;
 int tm_cloud_rot = 0x00;
-//--------------------- timer CLOUD : every x sec. ---
+Timer tm_aff(60000,Aff);
+bool tm_b_aff = false;
+//--------------------- timer CLOUD : every 20 sec. ---
 void Cloud() {
     tm_b_cloud = true;
+}
+void Aff() {
+    tm_b_aff = true;
 }
 HttpClient http;  
 http_header_t headers[] = {  
@@ -105,7 +111,7 @@ http_header_t headers[] = {
  };  
 http_request_t request;  
 http_response_t response;  
-//------------------------------------------------------------------ setp --
+//---------------------------------------------------------------------------- SETUP ---
 void setup() {
   // Put initialization like pinMode and begin functions here.
   Particle.publish("status", "by e-Coucou 2018");
@@ -122,25 +128,31 @@ void setup() {
   Lamp_color(0x0, 0xFFFF);
   delay(3000);
   SPI.begin();
-#if defined TFT
-  init_tft();
-  copyright();
-  delay(3000);
-#endif
+  #if defined TFT
+    init_tft();
+    copyright();
+    delay(3000);
+  #endif
   tm_cloud.start();
   // les capteurs ...
     bmp.begin();
     gyro.begin();
     accel.begin();
     mag.begin();
+  delay(3000);
+  aff_Trame();
 }
-
+//---------------------------------------
+// variables LOOP
 volatile unsigned long now, start = 0, count =0, iteration=0;
 volatile int update = 0;
 uint32_t lumiere=0x0;
 bool tft_update=true;
 char szMessage[30];
-//--------------------------------------------------------------------------------
+sensors_event_t event;
+double bme_t,bme_p;
+uint8_t regint = 0x00; // registre d'interruptions
+//-------------------------------------------------------------------------------- LOOP ---
 void loop() {
   // The core of your code will likely live here.
   now = millis(); count++;
@@ -149,7 +161,7 @@ void loop() {
   //--
     //-- Toutes les 500ms on récupère les infos de luminosité
     //-- 
-    if ((millis() % 1000) >= 500) {
+    if ((millis() % 500) >= 400) {
       tcs.getRawData(&red, &green, &blue, &clear);
       wh = clear;
       r = red/wh *256.0;
@@ -157,37 +169,29 @@ void loop() {
       b = blue/wh *256.0;
       illumination =  (-0.32466 * red) + (1.57837 * green) + (-0.73191 * blue); //
       illum_m = (illum_m * 11.0/12.0) + (illumination / 12.0);
-      luminosite = illum_m; /// pour debug
-      // gestion d'alerte par proximité
-//      if ( (abs(illumination) < abs(0.5*illum_m)) && abs(illum_m < 30.0) ) {
+      luminosite = illum_m; /// pour debug moyenne glissante de 12
       lumiere = 0x0;
       if (abs(illumination <=15.0)) {
          alert_illum = true;
-         lumiere = (0xFF - uint8_t(illumination)/15*255) << 24;
+         lumiere = uint8_t((15.0 - illumination)/15.0*255.0);
       } else { alert_illum = false;}
-//      Serial.println(String::format("Illumination : %f, luminosite : %f",illumination,luminosite));
     }
-/*
-  if (count<1000) {
-      Lamp_color(0x11FF0000,0xAAAA);
-  } else {
-      Lamp_color(0x1100FF00,0x5555);
-      if (count>2000)
-        {count=0;}
-  }
-*/
-    if (count > 10000) {
-        count = 0;
-        Particle.publish("status", String::format("Illumination : %f, luminosite : %f",illumination,luminosite));
+    if ((millis() % 1000) >= 900) {
+        aff_Seconde();
     }
+  // Gestion de l'allumage de la Lampe  
   if ( Lamp_on) {
       if (Lamp_auto & alert_illum) {
-        Lamp_color(lumiere,0xFFFF);
+        Lamp_color(lumiere << 24,0xFFFF);
       } else {
         Lamp_color(Lamp_couleur,Lamp_mask);
       }
   } else {
       Lamp_color(0x0,0xFFFF); 
+  }
+  if (tm_b_aff) {
+      aff_Heure();
+      tm_b_aff = false;
   }
    //-------------------------------------------------------------- CLOUD -------
     //-- Cloud / WebHook
@@ -197,14 +201,15 @@ void loop() {
     //-- webhook : toutes les variables commencent par Rky_
     //--
     if (tm_b_cloud) {
-        /*
-        bme_t = (double)bme.readTemperature();
-        bme_h = (double)bme.readHumidity();
-        bme_p = (double)bme.readPressure()/100.0;
-        bme_a = (double)bme.readAltitude(SEALEVELPRESSURE_HPA);
-        */
-//        battery = digitalRead(BATTERY);
-//        if (battery == LOW) digitalWrite(D7,HIGH);
+        bmp.getEvent(&event);
+        if (event.pressure)
+        {
+            float temperature;
+            /* Display ambient temperature in C */
+            bmp.getTemperature(&temperature);
+            bme_t = double(temperature);
+            bme_p = double(event.pressure);
+        }
         switch(tm_cloud_rot++) {
             case 0x00 :
                 Particle.publish("Rky_I",String(illumination),60,PUBLIC);
@@ -231,13 +236,13 @@ void loop() {
                 //Particle.publish("Rky_Ro",String(roll),60,PUBLIC);
                 break;
             case 0x08 :
-                //Particle.publish("Rky_T",String(bme_t),60,PUBLIC);
+                Particle.publish("Rky_T",String(bme_t),60,PUBLIC);
                 break;
             case 0x09 :
                 //Particle.publish("Rky_H",String(bme_h),60,PUBLIC);
                 break;
             case 0x0A :
-                //Particle.publish("Rky_P",String(bme_p),60,PUBLIC);
+                Particle.publish("Rky_P",String(bme_p),60,PUBLIC);
                 break;
             case 0x0B :
                 Particle.publish("Rky_Lm",String(lumiere),60,PUBLIC);
@@ -246,7 +251,7 @@ void loop() {
         tm_cloud_rot %= 12; // car 12 sensors publiés dans le cloud
         tm_b_cloud = false;
     } // end Cloud
-}
+} //------------------------------------- End LOOP --
 //-------------------------------------------------------- Gestion des animations LAMPE ----
 void rainbow(uint8_t wait) {
   uint16_t i, j;
@@ -259,7 +264,6 @@ void rainbow(uint8_t wait) {
     delay(wait);
   }
 }
-
 // Input a value 0 to 255 to get a color value.
 // The colours are a transition r - g - b - back to r.
 uint32_t Wheel(byte WheelPos) {
@@ -273,7 +277,6 @@ uint32_t Wheel(byte WheelPos) {
    return lampe.Color(0, WheelPos * 3, 255 - WheelPos * 3);
   }
 }
-
 int Lamp_color(uint32_t color, uint32_t mask) {
     for (uint16_t i=0; i<lampe.numPixels();i++)
     {
@@ -288,6 +291,7 @@ int Lamp_color(uint32_t color, uint32_t mask) {
 }
 //-------------------------------------------------------- Gestion de l'écran TFT ----
 #if defined TFT
+// tft 128x160
 void init_tft() {
 //    digitalWrite(POWER,HIGH);
 //    delay(30);
@@ -309,38 +313,46 @@ void copyright() {
     sprintf(szMess,"(c)Rky - RiCam %d.%d %02d:%02d\n%s",VERSION_MAJ,VERSION_MIN,Time.hour(),Time.minute(),WiFi.ready() ? "Wifi" : " - - ");
     tft.print(szMess);
 }
-void aff_Heure() {
-    char szMess[20];
+void aff_Heure() { //128x160
     int heure = int(Time.hour());
     int minute = int(Time.minute());
     int seconde = int(Time.second());
-    sprintf(szMess,"%2d:%s%d",heure,minute>9 ? "":"0",minute);
+//    sprintf(szMess,"%2d:%s%d",heure,minute>9 ? "":"0",minute);
 //    tft.fillRect(0,0,tft.width(),tft.height(),ST7735_BLACK);
 //    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE));
-//    tft.fillScreen(ST7735_BLACK);
+    tft.fillScreen(ST7735_BLACK);
     tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
-    tft.setCursor(8,43);
     tft.setTextSize(3);
-    tft.println(szMess);
-    tft.setCursor(105,43);
+    tft.setCursor(60,40);tft.println(String::format("%s%d",heure>9 ? "":"0",heure));
+    tft.setCursor(60,65);tft.println(String::format("%s%d",minute>9 ? "":"0",minute));
+    tft.setCursor(145,1);
+    tft.setTextSize(1);
+    tft.println(String::format("%s%d",seconde>9 ? "":"0", seconde));
+    tft_update = false;
+}
+void aff_Seconde() { //128x160
+    int seconde = int(Time.second());
+    tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
+    tft.setCursor(145,1);
     tft.setTextSize(1);
     tft.println(String::format("%s%d",seconde>9 ? "":"0", seconde));
     tft_update = false;
 }
 void aff_Date() {
-    char szMess[20];
+//    char szMess[20];
     int jour = int(Time.day());
     int mois = int(Time.month());
     int annee = int(Time.year());
-    sprintf(szMess,"%2d/%2d/%4d",jour,mois,annee);
+//    sprintf(szMess,"%2d/%2d/%4d",jour,mois,annee);
 //    tft.fillRect(0,0,tft.width(),tft.height(),ST7735_BLACK);
 //    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE));
 //    tft.fillScreen(ST7735_BLACK);
     tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
     tft.setTextSize(1);
-    tft.setCursor(137,37);tft.println(String::format("%2d",jour));
-    tft.setCursor(133,47);tft.println(Mois[mois-1]);
-    tft.setCursor(130,57);tft.println(String::format("%2d",annee));
+    tft.setCursor(50,37);tft.println(String::format("%2d-%s-%2d",jour,Mois[mois-1],annee));
+//    tft.setCursor(137,37);tft.println(String::format("%2d",jour));
+//    tft.setCursor(133,47);tft.println(Mois[mois-1]);
+//    tft.setCursor(130,57);tft.println(String::format("%2d",annee));
 //    tft.println(szMess);
 //    tft_update = false;
 }
@@ -358,11 +370,11 @@ void aff_Click() {
 }
 void aff_Trame() {
   tft.fillScreen(ST7735_BLACK);
-  tft.drawFastHLine(0,33,160,ST7735_WHITE);
-  tft.drawFastHLine(0,73,160,ST7735_WHITE);
-  tft.drawFastVLine(40,0,33,ST7735_WHITE);
-  tft.drawFastVLine(80,0,33,ST7735_WHITE);
-  tft.drawFastVLine(120,0,120,ST7735_WHITE);
+//  tft.drawFastHLine(0,33,160,ST7735_WHITE);
+//  tft.drawFastHLine(0,73,160,ST7735_WHITE);
+//  tft.drawFastVLine(40,0,33,ST7735_WHITE);
+//  tft.drawFastVLine(80,0,33,ST7735_WHITE);
+//  tft.drawFastVLine(120,0,120,ST7735_WHITE);
   tft.setTextColor(ST7735_BLUE,ST7735_BLACK);
   tft.setTextSize(1);
   tft.setCursor(1,121);
@@ -375,10 +387,67 @@ void aff_Trame() {
   aff_Date();
 //  getRequest();
 //  getBatterie();
-//  rainbow(20);
-//  Lamp_color(0x0,0xFFFF);
 }
 #endif
+//------------------------------------------------------------------ Web Commande ------
+// Get information depuis le site Accuweather
+void getRequest() {     
+  // serveur Accuweather
+  Meteo.data = false;
+  request.hostname = "dataservice.accuweather.com"; //IPAddress(192,168,1,169); 
+  request.hostname = "apidev.accuweather.com"; //from internet
+  request.port = 80;
+  request.path = "/currentconditions/v1/623.json?language=en&details=false&apikey=hoArfRosT1215"; //OU3bvqL9RzlrtSqXAJwg93E1Tlo3grVS";  
+  request.path = "/currentconditions/v1/623.json?language=fr-fr&details=true&apikey=hoArfRosT1215"; //from inetnet
+  request.body = "";
+   
+  http.get(request, response, headers);
+  tft.setCursor(129,78);
+  tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
+  tft.setTextSize(1);
+  tft.println(response.status);
+//  Serial.println(request.url);
+//  Serial.println(response.status);
+//  Serial.println(response.body);
+  if (response.status == 200) { 
+    String key1 = "WeatherText";
+    Meteo.ciel = KeyJson(key1 , response.body);
+    Meteo.jour =  (KeyJson("IsDayTime" , response.body) == "false") ? false : true;
+    String jsonTemp = KeyJson("Temperature" , response.body);
+    Meteo.Temperature = atof(KeyJson("Value",jsonTemp).c_str());
+    Meteo.Humidite = atoi(KeyJson("RelativeHumidity",response.body).c_str());
+    jsonTemp = KeyJson("Wind" , response.body);
+//    Serial.println(jsonTemp);
+    Meteo.Direction = atoi(KeyJson("Degrees", jsonTemp).c_str());
+    Meteo.Sens = KeyJson("Localized", response.body);
+    jsonTemp = KeyJson("Speed" , response.body);
+    Meteo.Vitesse = atof(KeyJson("Value" , jsonTemp).c_str());
+    Meteo.data = true;
+  }
+  if (Meteo.data) {
+    Serial.println(Meteo.Humidite);
+    Serial.println(Meteo.Temperature);
+    Serial.println(Meteo.ciel);
+    Serial.println(Meteo.Sens);
+    Serial.println(Meteo.Direction);
+    Serial.println(Meteo.Vitesse);
+    Serial.println(String::format("-- %d / %d",int(('é')),int('a')));
+  }
+  Particle.process();
+ }  
+
+String KeyJson(const String& k, const String& j){
+  int keyStartsAt = j.indexOf(k);
+//  Serial.println( keyStartsAt );
+  int keyEndsAt = keyStartsAt + k.length(); // inludes double quote
+//  Serial.println( keyEndsAt );
+  int colonPosition = j.indexOf(":", keyEndsAt);
+  int valueEndsAt = j.indexOf(",", colonPosition);
+  String val = j.substring(colonPosition + 1, valueEndsAt);
+  val.trim();
+//  Serial.println( val );
+  return val;
+}
 //------------------------------------------------------------------ Web Commande ------
 //--                                                                 ------------
 int WebCde(String  Cde) {
