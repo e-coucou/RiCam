@@ -115,7 +115,7 @@ http_response_t response;
 void setup() {
   // Put initialization like pinMode and begin functions here.
   Particle.publish("status", "by e-Coucou 2018");
-  Time.zone(+2);
+  Time.zone(+1); // +1 heure d'hiver vs +2 ete
   Particle.variable("luminosite",luminosite);
   Particle.variable("illumination",illumination);
   Wire.setSpeed(CLOCK_SPEED_100KHZ);
@@ -134,6 +134,7 @@ void setup() {
     delay(3000);
   #endif
   tm_cloud.start();
+  tm_aff.start();
   // les capteurs ...
     bmp.begin();
     gyro.begin();
@@ -317,11 +318,8 @@ void aff_Heure() { //128x160
     int heure = int(Time.hour());
     int minute = int(Time.minute());
     int seconde = int(Time.second());
-//    sprintf(szMess,"%2d:%s%d",heure,minute>9 ? "":"0",minute);
-//    tft.fillRect(0,0,tft.width(),tft.height(),ST7735_BLACK);
-//    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE));
+    tft.setTextColor(tft.Color565(0x40,0x40,0x40),ST7735_BLACK);
     tft.fillScreen(ST7735_BLACK);
-    tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
     tft.setTextSize(3);
     tft.setCursor(60,40);tft.println(String::format("%s%d",heure>9 ? "":"0",heure));
     tft.setCursor(60,65);tft.println(String::format("%s%d",minute>9 ? "":"0",minute));
@@ -332,10 +330,13 @@ void aff_Heure() { //128x160
 }
 void aff_Seconde() { //128x160
     int seconde = int(Time.second());
-    tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
+    tft.setTextColor(tft.Color565(0x40,0x40,0x40),ST7735_BLACK);
     tft.setCursor(145,1);
     tft.setTextSize(1);
     tft.println(String::format("%s%d",seconde>9 ? "":"0", seconde));
+    if (seconde==0) {
+        aff_Heure();
+    }
     tft_update = false;
 }
 void aff_Date() {
@@ -347,14 +348,14 @@ void aff_Date() {
 //    tft.fillRect(0,0,tft.width(),tft.height(),ST7735_BLACK);
 //    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE));
 //    tft.fillScreen(ST7735_BLACK);
-    tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
+    tft.setTextColor(tft.Color565(0x40,0x40,0x40),ST7735_BLACK);
     tft.setTextSize(1);
     tft.setCursor(50,37);tft.println(String::format("%2d-%s-%2d",jour,Mois[mois-1],annee));
 //    tft.setCursor(137,37);tft.println(String::format("%2d",jour));
 //    tft.setCursor(133,47);tft.println(Mois[mois-1]);
 //    tft.setCursor(130,57);tft.println(String::format("%2d",annee));
 //    tft.println(szMess);
-//    tft_update = false;
+    tft_update = false;
 }
 void aff_Click() {
     char szMess[20];
@@ -375,7 +376,7 @@ void aff_Trame() {
 //  tft.drawFastVLine(40,0,33,ST7735_WHITE);
 //  tft.drawFastVLine(80,0,33,ST7735_WHITE);
 //  tft.drawFastVLine(120,0,120,ST7735_WHITE);
-  tft.setTextColor(ST7735_BLUE,ST7735_BLACK);
+  tft.setTextColor(ST7735_LIGHT_GREY,ST7735_BLACK);
   tft.setTextSize(1);
   tft.setCursor(1,121);
   tft.println(String::format("%s %d.%d (%s)",AUTEUR,VERSION_MAJ,VERSION_MIN,RELEASE));
