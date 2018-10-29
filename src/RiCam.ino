@@ -35,6 +35,7 @@
 // ---- Commande Web
 int WebCde(String Cde);
 bool serial_on;
+uint8_t mode = 0x00; // 0=cycle, 1=lampe, 2= menu
 
 String Mois[12] = {"JAN", "FEV", "MAR", "AVR", "MAI", "JUN", "JUI", "AOU", "SEP", "OCT", "NOV", "DEC"};
 struct stParam {
@@ -225,10 +226,7 @@ void loop() {
             bouton3();
             break;
         case -1 : // 1 long : on switch sur le mode LAMP
-            Lamp_color(0x00FF0000,0x5555);
-            Lamp_on = !Lamp_on;
-//            menu = M_LAMP;
-//            if (!Lamp_on) menu = 0x00;
+            mode = (mode + 1)%3;
             break;
     }
     Button = 0x00;
@@ -416,7 +414,7 @@ void aff_Entete() { //128x160
     tft.setTextColor(tft.Color565(0xFF,0x10,0x00),ST7735_BLACK);
     tft.setCursor(1,1);
     tft.setTextSize(1);
-    tft.println("RiCam");
+    tft.println(String::format("RiCam (%d)",mode));
     tft.drawFastHLine(0,126,75,ST7735_BLUE);
     tft.drawFastHLine(75,126,10,ST7735_WHITE);
     tft.drawFastHLine(85,126,75,ST7735_RED);
@@ -446,21 +444,26 @@ void aff_Click() {
     tft_update = false;
 }
 void aff_Meteo(bool up) {
+    int l;
     tft.setTextColor(tft.Color565(0xA0,0xA0,0xF0),ST7735_BLACK);
     tft.setTextSize(3);
     tft.setCursor(31,22);tft.println("PARIS");
+    tft.setTextSize(1);
+    tft.setCursor(140,22);tft.println(String::format("(%c)",Meteo.jour ? 'J':'N'));
     tft.setTextColor(tft.Color565(0x80,0x80,0xC0),ST7735_BLACK);
     tft.setTextSize(2);
     if (up) {
         tft.setCursor(20,65);tft.println(String::format("%3.0f C %2d%%",Meteo.Temperature,Meteo.Humidite));
-        int l = strlen(Meteo.ciel);
+        l = strlen(Meteo.ciel);
         l = 79 - l/2*14;
         tft.setCursor(l,85);tft.println(Meteo.ciel);
     } else {
         tft.setTextSize(2);
         tft.setCursor(10,65);tft.println(Meteo.Sens+String::format(" %3.0f km/h",Meteo.Vitesse));
         tft.setCursor(10,85);tft.println(String::format("%4.0f hPa",Meteo.Pression));
-        tft.setCursor(10,105);tft.println(Meteo.PressionTrend);
+        tft.setTextSize(1);
+        l = 79 - strlen(Meteo.PressionTrend)/2*7;
+        tft.setCursor(l,105);tft.println(Meteo.PressionTrend);
     }
 }
 void aff_Trame() {
