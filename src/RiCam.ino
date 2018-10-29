@@ -324,7 +324,7 @@ void aff_Heure() { //128x160
     int seconde = int(Time.second());
     tft.fillScreen(ST7735_BLACK);
     aff_Entete();
-    tft.setTextColor(tft.Color565(0x40,0x40,0x40),ST7735_BLACK);
+    tft.setTextColor(tft.Color565(0xA0,0xA0,0xA0),ST7735_BLACK);
     tft.setTextSize(3);
     tft.setCursor(60,40);tft.println(String::format("%s%d",heure>9 ? "":"0",heure));
     tft.setCursor(60,65);tft.println(String::format("%s%d",minute>9 ? "":"0",minute));
@@ -335,7 +335,7 @@ void aff_Heure() { //128x160
 }
 void aff_Seconde() { //128x160
     int seconde = int(Time.second());
-    tft.setTextColor(tft.Color565(0x40,0x40,0x40),ST7735_BLACK);
+    tft.setTextColor(tft.Color565(0xA0,0xA0,0xA0),ST7735_BLACK);
     tft.setCursor(145,1);
     tft.setTextSize(1);
     tft.println(String::format("%s%d",seconde>9 ? "":"0", seconde));
@@ -352,7 +352,7 @@ void aff_Status(uint8_t ligne, uint8_t colonne,String szMess) { //128x160
     tft_update = false;
 }
 void aff_Entete() { //128x160
-    tft.setTextColor(tft.Color565(0x200,0x30,0x0),ST7735_BLACK);
+    tft.setTextColor(tft.Color565(0x30,0x250,0x0),ST7735_BLACK);
     tft.setCursor(1,1);
     tft.setTextSize(1);
     tft.println("RiCam");
@@ -367,9 +367,11 @@ void aff_Date() {
 //    tft.fillRect(0,0,tft.width(),tft.height(),ST7735_BLACK);
 //    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE));
 //    tft.fillScreen(ST7735_BLACK);
-    tft.setTextColor(tft.Color565(0x40,0x40,0x40),ST7735_BLACK);
-    tft.setTextSize(1);
-    tft.setCursor(50,37);tft.println(String::format("%2d-%s-%2d",jour,Mois[mois-1],annee));
+    tft.setTextColor(tft.Color565(0xA0,0xA0,0xA0),ST7735_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(47,25);tft.println(String::format("%s%d-",jour>9 ? "":"0",jour));
+    tft.setCursor(47,45);tft.println(Mois[mois-1]);
+    tft.setCursor(47,65);tft.println(String::format("-%2d",annee-2000));
 //    tft.setCursor(137,37);tft.println(String::format("%2d",jour));
 //    tft.setCursor(133,47);tft.println(Mois[mois-1]);
 //    tft.setCursor(130,57);tft.println(String::format("%2d",annee));
