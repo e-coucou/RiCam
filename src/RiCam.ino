@@ -8,6 +8,7 @@
 #include "neopixel.h"
 #include "Adafruit_TCS34725.h"
 #include "HttpClient.h"
+#include "clickButton.h"
 // Version Information
 #define NAME "RiCam"
 #define AUTEUR "eCoucou"
@@ -82,6 +83,11 @@ static const byte Lamp_c[8] = { 0, 35, 70, 105, 140, 175, 210, 255 };
 #define sid     A5
 ST7735 tft = ST7735(cs, dc, rst); //l'affichage en mode MISO
 #endif
+// -------------------------------------------------------gestion des boutons --------
+void click(void); // la function d'interruption
+int clk = D3; // bouton
+ClickButton down(clk,LOW,CLICKBTN_PULLUP);
+int Button = 0;
 //--------------------------------------------- Capteurs  -------
 //--                                            -------
 Adafruit_BMP085_Unified       bmp   = Adafruit_BMP085_Unified(18001);
@@ -128,7 +134,11 @@ void setup() {
   lampe.begin();
   // Start WebCommande
   bool success = Particle.function("Cde",WebCde);
-  // initialize SPI:
+  // Setup button timers (all in milliseconds / ms)
+  // (These are default if not set, but changeable for convenience)
+  down.debounceTime   = 20;   // Debounce timer in ms
+  down.multiclickTime = 250;  // Time limit for multi clicks
+  down.longClickTime  = 1000; // time until "held-down clicks" register
   rainbow(20);
   Lamp_color(0x0, 0xFFFF);
   delay(3000);
@@ -201,6 +211,28 @@ void loop() {
       getRequest();
       tm_b_aff = false;
   }
+  //----------------------------------------------------------------- le Bouton -------------
+    down.Update();
+    if (down.clicks !=0)  Button = down.clicks; 
+    switch (Button) {
+        case 1 : // 1 click : on fait +1 sur luminosité et sous menu
+            bouton1();
+            break;
+        case 2 : // 2 click : on passe au sous menu suivant. (mode Lamp_on on change de couleur)
+            bouton2();
+            break;
+        case 3 : // 3 click : on switch  sur le mode WAMP de la barre latéral
+            bouton3();
+            break;
+        case -1 : // 1 long : on switch sur le mode LAMP
+            Lamp_color(0x00FF0000,0x5555);
+            Lamp_on = !Lamp_on;
+//            menu = M_LAMP;
+//            if (!Lamp_on) menu = 0x00;
+            break;
+    }
+    Button = 0x00;
+    down.clicks = 0;
   //---------------------------------------------------------------- CYCLE -----
   if (tm_b_cycle) {
       tm_b_cycle = false;
@@ -564,3 +596,12 @@ int WebCde(String  Cde) {
     Particle.publish("Status", szMess);
     return commande;
 } // end WebCde
+void bouton1() {
+  tm_b_cycle = true;
+}
+void bouton2() {
+    Lamp_on = !Lamp_on;
+}
+void bouton3() {
+    Lamp_auto = !Lamp_auto;
+}
