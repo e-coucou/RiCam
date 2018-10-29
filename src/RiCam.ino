@@ -43,9 +43,8 @@ struct stParam {
 stParam Param = {1,0,60000};
 
 struct stAccuWeather {
-  float Temperature,Vitesse;
-  String ciel;
-  String Sens;
+  float Temperature,Vitesse,Ressentie,Pression;
+  String ciel,Sens,PressionTrend;
   int Direction,Humidite;
   bool jour, data;
 };
@@ -65,10 +64,10 @@ Adafruit_NeoPixel lampe = Adafruit_NeoPixel(LAMP_COUNT, LAMP_PIN, LAMP_TYPE);
 void rainbow(uint8_t wait);
 uint32_t Wheel(byte WheelPos);
 uint16_t w = 0x0000;
-uint32_t Lamp_couleur,Lamp_mask=0xFFFF,wait_start; // Neo_color : 0xWWGGRRBB
+uint32_t Lamp_couleur=0x0010FF00,Lamp_mask=0xFFFF,wait_start; // Neo_color : 0xWWGGRRBB
 char tour=0;
 char Lamp_w = 12;
-bool Lamp_on = true;
+bool Lamp_on = false;
 bool Lamp_auto = true;
 static const byte Lamp_l[13] = { 0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 255 };
 static const byte Lamp_c[8] = { 0, 35, 70, 105, 140, 175, 210, 255 };
@@ -94,14 +93,20 @@ sensor_t sensor;
 Timer tm_cloud(20000,Cloud);
 bool tm_b_cloud = false;
 int tm_cloud_rot = 0x00;
-Timer tm_aff(60000,Aff);
-bool tm_b_aff = false;
+Timer tm_cycle(10000,Cycle);
+bool tm_b_cycle = false;
+int tm_cycle_rot = 0x00;
+Timer tm_aff(150000,Aff);
+bool tm_b_aff = true;
 //--------------------- timer CLOUD : every 20 sec. ---
 void Cloud() {
     tm_b_cloud = true;
 }
 void Aff() {
     tm_b_aff = true;
+}
+void Cycle() {
+    tm_b_cycle = true;
 }
 HttpClient http;  
 http_header_t headers[] = {  
@@ -135,6 +140,7 @@ void setup() {
   #endif
   tm_cloud.start();
   tm_aff.start();
+  tm_cycle.start();
   // les capteurs ...
     bmp.begin();
     gyro.begin();
@@ -191,11 +197,36 @@ void loop() {
       Lamp_color(0x0,0xFFFF); 
   }
   if (tm_b_aff) {
+      aff_Status(1,120,"...");
       getRequest();
       tm_b_aff = false;
-      if (Meteo.data) {
-            aff_Status(120,1,String::format("%5.1f C",Meteo.Temperature));
-            aff_Status(120,40,Meteo.ciel);
+  }
+  //---------------------------------------------------------------- CYCLE -----
+  if (tm_b_cycle) {
+      tm_b_cycle = false;
+      tft.fillScreen(ST7735_BLACK);
+      aff_Entete();
+      switch(tm_cloud_rot++) {
+          case 0x00:
+            aff_Status(40,20,"Bienvenue");break;
+          case 0x01 :
+            aff_Date();break;
+          case 0x02 :
+              if (Meteo.data) {
+                  aff_Meteo(true);
+              } else {
+                aff_Status(50,10,"No data from Web !");
+              }
+              break;
+          case 0x03 :
+              if (Meteo.data) {
+                  aff_Meteo(false);
+              } else {
+                aff_Status(50,10,"No data from Web !");
+              }
+              break;
+          default :
+            aff_Heure();tm_cloud_rot=0; break;
       }
   }
    //-------------------------------------------------------------- CLOUD -------
@@ -306,7 +337,7 @@ void init_tft() {
 void copyright() {
     tft.fillScreen(ST7735_BLACK);// 19 19 70 - ST7735_BLACK);
     tft.setCursor(0, 0);
-//    tft.setTextColor(tft.Color565(0xAC,0xEE,0xEE),tft.Color565(0x19,0x19,0x70));//,ST7735_BLACK);
+    //    tft.setTextColor(tft.Color565(0xAC,0xEE,0xEE),tft.Color565(0x19,0x19,0x70));//,ST7735_BLACK);
     tft.setTextColor(tft.Color565(0xAC,0xEE,0xEE),ST7735_BLACK);
     tft.setTextWrap(true);
     tft.println("Welcome @RiCam. \n(c) e-Coucou 2018\n\nDemarrage du SYSTEME\nby rky ...");
@@ -322,12 +353,10 @@ void aff_Heure() { //128x160
     int heure = int(Time.hour());
     int minute = int(Time.minute());
     int seconde = int(Time.second());
-    tft.fillScreen(ST7735_BLACK);
-    aff_Entete();
-    tft.setTextColor(tft.Color565(0xA0,0xA0,0xA0),ST7735_BLACK);
+    tft.setTextColor(tft.Color565(0xA0,0xA0,0xFF),ST7735_BLACK);
     tft.setTextSize(3);
-    tft.setCursor(60,40);tft.println(String::format("%s%d",heure>9 ? "":"0",heure));
-    tft.setCursor(60,65);tft.println(String::format("%s%d",minute>9 ? "":"0",minute));
+    tft.setCursor(62,42);tft.println(String::format("%s%d",heure>9 ? "":"0",heure));
+    tft.setCursor(62,67);tft.println(String::format("%s%d",minute>9 ? "":"0",minute));
     tft.setCursor(145,1);
     tft.setTextSize(1);
     tft.println(String::format("%s%d",seconde>9 ? "":"0", seconde));
@@ -339,50 +368,44 @@ void aff_Seconde() { //128x160
     tft.setCursor(145,1);
     tft.setTextSize(1);
     tft.println(String::format("%s%d",seconde>9 ? "":"0", seconde));
-    if (seconde==0) {
+    if (seconde==0 & tm_cycle_rot>3) {
         aff_Heure();
     }
     tft_update = false;
 }
 void aff_Status(uint8_t ligne, uint8_t colonne,String szMess) { //128x160
-    tft.setTextColor(tft.Color565(0x20,0x20,0x20),ST7735_BLACK);
+    tft.setTextColor(tft.Color565(0xC0,0xC0,0xC0),ST7735_BLACK);
     tft.setCursor(colonne,ligne);
     tft.setTextSize(1);
     tft.println(szMess);
     tft_update = false;
 }
 void aff_Entete() { //128x160
-    tft.setTextColor(tft.Color565(0x30,0x250,0x0),ST7735_BLACK);
+    tft.setTextColor(tft.Color565(0xFF,0x10,0x00),ST7735_BLACK);
     tft.setCursor(1,1);
     tft.setTextSize(1);
     tft.println("RiCam");
+    tft.drawFastHLine(0,126,75,ST7735_BLUE);
+    tft.drawFastHLine(75,126,10,ST7735_WHITE);
+    tft.drawFastHLine(85,126,75,ST7735_RED);
     tft_update = false;
 }
 void aff_Date() {
-//    char szMess[20];
     int jour = int(Time.day());
     int mois = int(Time.month());
     int annee = int(Time.year());
-//    sprintf(szMess,"%2d/%2d/%4d",jour,mois,annee);
-//    tft.fillRect(0,0,tft.width(),tft.height(),ST7735_BLACK);
-//    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE));
-//    tft.fillScreen(ST7735_BLACK);
-    tft.setTextColor(tft.Color565(0xA0,0xA0,0xA0),ST7735_BLACK);
+    tft.setTextColor(tft.Color565(0xA0,0xA0,0xF0),ST7735_BLACK);
     tft.setTextSize(3);
-    tft.setCursor(47,25);tft.println(String::format("%s%d-",jour>9 ? "":"0",jour));
-    tft.setCursor(47,45);tft.println(Mois[mois-1]);
-    tft.setCursor(47,65);tft.println(String::format("-%2d",annee-2000));
-//    tft.setCursor(137,37);tft.println(String::format("%2d",jour));
-//    tft.setCursor(133,47);tft.println(Mois[mois-1]);
-//    tft.setCursor(130,57);tft.println(String::format("%2d",annee));
-//    tft.println(szMess);
+    tft.setCursor(51,26);tft.println(String::format("%s%d ",jour>9 ? "":"0",jour));
+    tft.setCursor(51,49);tft.println(Mois[mois-1]);
+    tft.setCursor(51,72);tft.println(String::format(" %2d",annee-2000));
     tft_update = false;
 }
 void aff_Click() {
     char szMess[20];
     sprintf(szMess,"CLICK");
-//    tft.fillRect(0,0,tft.width(),tft.height(),ST7735_BLACK);
-//    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE));
+    //    tft.fillRect(0,0,tft.width(),tft.height(),ST7735_BLACK);
+    //    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE));
     tft.fillScreen(ST7735_RED);
     tft.setTextColor(ST7735_WHITE);
     tft.setCursor(10,50);
@@ -390,36 +413,54 @@ void aff_Click() {
     tft.println(szMess);
     tft_update = false;
 }
+void aff_Meteo(bool up) {
+    tft.setTextColor(tft.Color565(0xA0,0xA0,0xF0),ST7735_BLACK);
+    tft.setTextSize(3);
+    tft.setCursor(31,22);tft.println("PARIS");
+    tft.setTextColor(tft.Color565(0x80,0x80,0xC0),ST7735_BLACK);
+    tft.setTextSize(2);
+    if (up) {
+        tft.setCursor(20,65);tft.println(String::format("%3.0f C %2d%%",Meteo.Temperature,Meteo.Humidite));
+        int l = strlen(Meteo.ciel);
+        l = 79 - l/2*14;
+        tft.setCursor(l,85);tft.println(Meteo.ciel);
+    } else {
+        tft.setTextSize(2);
+        tft.setCursor(10,65);tft.println(Meteo.Sens+String::format(" %3.0f km/h",Meteo.Vitesse));
+        tft.setCursor(10,85);tft.println(String::format("%4.0f hPa",Meteo.Pression));
+        tft.setCursor(10,105);tft.println(Meteo.PressionTrend);
+    }
+}
 void aff_Trame() {
   tft.fillScreen(ST7735_BLACK);
-//  tft.drawFastHLine(0,33,160,ST7735_WHITE);
-//  tft.drawFastHLine(0,73,160,ST7735_WHITE);
-//  tft.drawFastVLine(40,0,33,ST7735_WHITE);
-//  tft.drawFastVLine(80,0,33,ST7735_WHITE);
-//  tft.drawFastVLine(120,0,120,ST7735_WHITE);
+  //  tft.drawFastHLine(0,33,160,ST7735_WHITE);
+  //  tft.drawFastHLine(0,73,160,ST7735_WHITE);
+  //  tft.drawFastVLine(40,0,33,ST7735_WHITE);
+  //  tft.drawFastVLine(80,0,33,ST7735_WHITE);
+  //  tft.drawFastVLine(120,0,120,ST7735_WHITE);
   tft.setTextColor(tft.Color565(0x40,0x40,0x40),ST7735_BLACK);
   tft.setTextSize(1);
   tft.setCursor(1,121);
   tft.println(String::format("%s %d.%d (%s)",AUTEUR,VERSION_MAJ,VERSION_MIN,RELEASE));
   tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
   tft.setCursor(125,1);
-//  tft.println(String::format("%5.1f",bytesRead/1024.0));
+  //  tft.println(String::format("%5.1f",bytesRead/1024.0));
   tft.setCursor(135,24);
-//  tft.println(String::format("%c",isPicture ? 'V' : 'x'));
+  //  tft.println(String::format("%c",isPicture ? 'V' : 'x'));
   aff_Date();
-//  getRequest();
-//  getBatterie();
+  //  getRequest();
+  //  getBatterie();
 }
 #endif
-//------------------------------------------------------------------ Web Commande ------
+//------------------------------------------------------------------ Web Information ------
 // Get information depuis le site Accuweather
 void getRequest() {     
   // serveur Accuweather
   Meteo.data = false;
-  request.hostname = "dataservice.accuweather.com"; //IPAddress(192,168,1,169); 
+  //  request.hostname = "dataservice.accuweather.com"; //IPAddress(192,168,1,169); 
   request.hostname = "apidev.accuweather.com"; //from internet
   request.port = 80;
-  request.path = "/currentconditions/v1/623.json?language=en&details=false&apikey=hoArfRosT1215"; //OU3bvqL9RzlrtSqXAJwg93E1Tlo3grVS";  
+  //request.path = "/currentconditions/v1/623.json?language=en&details=false&apikey=hoArfRosT1215"; //OU3bvqL9RzlrtSqXAJwg93E1Tlo3grVS";  
   request.path = "/currentconditions/v1/623.json?language=fr-fr&details=true&apikey=hoArfRosT1215"; //from inetnet
   request.body = "";
   http.get(request, response, headers);
@@ -428,7 +469,7 @@ void getRequest() {
   tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
   tft.setTextSize(1);
   tft.println(response.status);*/
-  aff_Status(1,129,String::format("%d",response.status));
+  aff_Status(120,1,String::format("%d",response.status));
   //  Serial.println(request.url);
   //  Serial.println(response.status);
   //  Serial.println(response.body);
@@ -438,23 +479,19 @@ void getRequest() {
     Meteo.jour =  (KeyJson("IsDayTime" , response.body) == "false") ? false : true;
     String jsonTemp = KeyJson("Temperature" , response.body);
     Meteo.Temperature = atof(KeyJson("Value",jsonTemp).c_str());
+    jsonTemp = KeyJson("RealFeelTemperature" , response.body);
+    Meteo.Ressentie = atof(KeyJson("Value",jsonTemp).c_str());
     Meteo.Humidite = atoi(KeyJson("RelativeHumidity",response.body).c_str());
     jsonTemp = KeyJson("Wind" , response.body);
-  //    Serial.println(jsonTemp);
     Meteo.Direction = atoi(KeyJson("Degrees", jsonTemp).c_str());
     Meteo.Sens = KeyJson("Localized", response.body);
     jsonTemp = KeyJson("Speed" , response.body);
     Meteo.Vitesse = atof(KeyJson("Value" , jsonTemp).c_str());
+    jsonTemp = KeyJson("Pressure" , response.body);
+    Meteo.Pression = atof(KeyJson("Value",jsonTemp).c_str());
+    jsonTemp = KeyJson("PressureTendency" , response.body);
+    Meteo.PressionTrend = KeyJson("LocalizedText",jsonTemp);
     Meteo.data = true;
-  }
-  if (Meteo.data) {
-    Serial.println(Meteo.Humidite);
-    Serial.println(Meteo.Temperature);
-    Serial.println(Meteo.ciel);
-    Serial.println(Meteo.Sens);
-    Serial.println(Meteo.Direction);
-    Serial.println(Meteo.Vitesse);
-    Serial.println(String::format("-- %d / %d",int(('é')),int('a')));
   }
   Particle.process();
  }  
@@ -507,6 +544,7 @@ int WebCde(String  Cde) {
             break;
         case 0xB0: // affiche un message sur l'écran
             sprintf(szMess,"%s",arg[0]);
+            aff_Status(20,1,szMess);
             break;
         case 0xF0:// On/Off de la lampe
             Lamp_on = !Lamp_on;
