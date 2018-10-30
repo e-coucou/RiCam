@@ -9,6 +9,7 @@
 #include "Adafruit_TCS34725.h"
 #include "HttpClient.h"
 #include "clickButton.h"
+#include "menu.h"
 // Version Information
 #define NAME "RiCam"
 #define AUTEUR "eCoucou"
@@ -35,7 +36,7 @@
 // ---- Commande Web
 int WebCde(String Cde);
 bool serial_on;
-uint8_t mode = 0x00; // 0=cycle, 1=lampe, 2= menu
+uint8_t mode = MODE_CYCLE; // 0=cycle, 1=lampe, 2= menu
 
 String Mois[12] = {"JAN", "FEV", "MAR", "AVR", "MAI", "JUN", "JUI", "AOU", "SEP", "OCT", "NOV", "DEC"};
 struct stParam {
@@ -214,31 +215,48 @@ void loop() {
   }
   //----------------------------------------------------------------- le Bouton -------------
     down.Update();
-    if (down.clicks !=0)  Button = down.clicks; 
-    switch (Button) {
-        case 1 : // 1 click : on fait +1 sur luminosité et sous menu
-            bouton1();
-            break;
-        case 2 : // 2 click : on passe au sous menu suivant. (mode Lamp_on on change de couleur)
-            bouton2();
-            break;
-        case 3 : // 3 click : on switch  sur le mode WAMP de la barre latéral
-            bouton3();
-            break;
-        case -1 : // 1 long : on switch sur le mode LAMP
-            mode = (mode + 1)%3;
-            break;
+    if (down.clicks !=0) {
+        Button = down.clicks;
+        tm_cycle.reset();
+        switch (Button) {
+            case 1 : // 1 click : on fait +1 sur luminosité et sous menu
+                bouton1();
+                break;
+            case 2 : // 2 click : on passe au sous menu suivant. (mode Lamp_on on change de couleur)
+                bouton2();
+                break;
+            case 3 : // 3 click : on switch  sur mode Lampe
+                bouton3();
+                break;
+            case -1 : // 1 long : on switch sur le mode menu
+                if (mode == MODE_MENU) {
+                    mode = MODE_CYCLE;
+                } else {
+                    mode = MODE_MENU;
+                }
+                break;
+        }
+        Button = 0x00;
+        down.clicks = 0;
+        aff_Entete();
     }
-    Button = 0x00;
-    down.clicks = 0;
+  if (mode == MODE_MENU) {
+      menuS = 0;
+      affMenu(4,&menu_principal[0]);
+  }
   //---------------------------------------------------------------- CYCLE -----
-  if (tm_b_cycle) {
+  if (tm_b_cycle & mode==MODE_CYCLE) {
       tm_b_cycle = false;
       tft.fillScreen(ST7735_BLACK);
       aff_Entete();
       switch(tm_cloud_rot++) {
           case 0x00:
-            aff_Status(40,20,"Bienvenue");break;
+            aff_Status(20,20,"RiCam");
+            aff_Status(35,20," .   : defilement");
+            aff_Status(45,20," ..  : valide");
+            aff_Status(55,20," ... : lampe");
+            aff_Status(65,20," --- : menu");
+            break;
           case 0x01 :
             aff_Date();break;
           case 0x02 :
@@ -455,13 +473,13 @@ void aff_Meteo(bool up) {
     if (up) {
         tft.setCursor(20,65);tft.println(String::format("%3.0f C %2d%%",Meteo.Temperature,Meteo.Humidite));
         l = strlen(Meteo.ciel);
-        l = 79 - l/2*14;
+        l = 79 - l/2*7;
+        tft.setTextSize(1);
         tft.setCursor(l,85);tft.println(Meteo.ciel);
     } else {
-        tft.setTextSize(2);
+        tft.setTextSize(1);
         tft.setCursor(10,65);tft.println(Meteo.Sens+String::format(" %3.0f km/h",Meteo.Vitesse));
         tft.setCursor(10,85);tft.println(String::format("%4.0f hPa",Meteo.Pression));
-        tft.setTextSize(1);
         l = 79 - strlen(Meteo.PressionTrend)/2*7;
         tft.setCursor(l,105);tft.println(Meteo.PressionTrend);
     }
@@ -600,11 +618,35 @@ int WebCde(String  Cde) {
     return commande;
 } // end WebCde
 void bouton1() {
-  tm_b_cycle = true;
+    if (!Lamp_on) {
+        tm_b_cycle = true;
+        //menu = (menu & 0xFF00) + (((menu & 0x00FF) + 1) % m_count);
+        //wait_start = 0x00;
+        menuS = (menuS + 1) % 4;
+    } else {
+        Lamp_w = (Lamp_w+1) % 13;
+        Lamp_couleur = Lamp_l[Lamp_w] << 24;
+        Lamp_color(Lamp_couleur,Lamp_mask);
+    }
 }
 void bouton2() {
-    Lamp_on = !Lamp_on;
+    if (mode == MODE_CYCLE) Lamp_auto = !Lamp_auto;
 }
 void bouton3() {
-    Lamp_auto = !Lamp_auto;
+    Lamp_on = !Lamp_on;
+    if (Lamp_on) 
+        { mode=MODE_LAMPE; }
+        else
+        { mode=MODE_CYCLE; }
+}
+//------------------------------------------------------------ MENU -------
+void affMenu(short l, char* menutxt[] ) {
+    for (short i=0; i<l;printMenu(i++,menuS, &menutxt[i-1]));
+}
+void printMenu(short n, short s, char* menutxt[]) {
+    tft.fillRect(1,(n*15)+40,tft.width()-2,13,(n==(s-1)) ? ST7735_BLUE : 0x5555);
+    tft.setCursor(3,(n*15)+42);
+    tft.setTextSize(1);
+    tft.setTextColor(ST7735_WHITE);
+    tft.print(*menutxt); //menu_system[n]);
 }
