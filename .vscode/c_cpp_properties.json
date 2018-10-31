@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "/Users/Eric/Documents/perso/Particle/RiCam/src/RiCam.ino",
-                "C:/Perso/Rky/RiCam/"
+                "C:/Perso/Rky/RiCam/src/RiCam.ino",
+                "c:\\Perso\\Rky\\RiCam\\src\\RiCam.ino"
             ],
             "defines": [],
             "macFrameworkPath": [

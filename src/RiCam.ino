@@ -33,6 +33,8 @@
 				        -|A0          D0|- SDA |
 				          \____________/ 
 */
+void aff_cls(uint16_t couleur=ST7735_BLACK);
+void aff_Click(char * szMess[], uint16_t couleur = ST7735_RED);
 // ---- Commande Web
 int WebCde(String Cde);
 bool serial_on;
@@ -52,6 +54,7 @@ struct stAccuWeather {
   bool jour, data;
 };
 stAccuWeather Meteo;
+uint8_t meteoS = 0;
 // Surveillance
 double illum_m = 0;
 bool alert_illum  = false;
@@ -233,17 +236,41 @@ void loop() {
                     mode = MODE_CYCLE;
                 } else {
                     mode = MODE_MENU;
+                    menuC = 5; menuS = 0; menu = 1;
                 }
                 break;
         }
         Button = 0x00;
         down.clicks = 0;
+        if (mode == MODE_MENU) {
+          aff_Status(0,120,String::format("[%d]",menu));
+          switch (menu) {
+            case 50: // Exit menu, retour au mode Cycle
+                mode = MODE_CYCLE;
+                tm_b_cycle = true;
+            case 130:
+                menuC = 5; menuS = 0; menu = 1;
+            case 1 : // Capteurs
+                aff_cls();
+            case 2 : // Gyro
+            case 3 : // Meteo
+            case 4 : // Lampe
+            case 5 : // Exit
+                affMenu(menuC,&menu_principal[0]);
+                break;
+            case 10: 
+                menuC = 4;
+                aff_Click("Capteur 1"); break;
+            case 11:    aff_Click("Capteur 2"); break;
+            case 12:    aff_Click("Capteur 3"); break;
+            case 13:    aff_Click("Retour",ST7735_BLUE); break;
+            default : //erreur on revient ancien menu car menu non implémenté
+                menu = menuO;
+                break;
+          }
+        }
         aff_Entete();
     }
-  if (mode == MODE_MENU) {
-      menuS = 0;
-      affMenu(4,&menu_principal[0]);
-  }
   //---------------------------------------------------------------- CYCLE -----
   if (tm_b_cycle & mode==MODE_CYCLE) {
       tm_b_cycle = false;
@@ -449,25 +476,27 @@ void aff_Date() {
     tft.setCursor(51,72);tft.println(String::format(" %2d",annee-2000));
     tft_update = false;
 }
-void aff_Click() {
-    char szMess[20];
-    sprintf(szMess,"CLICK");
+void aff_Click(char * szMess[],uint16_t couleur) {
     //    tft.fillRect(0,0,tft.width(),tft.height(),ST7735_BLACK);
     //    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE));
-    tft.fillScreen(ST7735_RED);
+    tft.fillScreen(couleur);
     tft.setTextColor(ST7735_WHITE);
     tft.setCursor(10,50);
     tft.setTextSize(4);
     tft.println(szMess);
     tft_update = false;
 }
+void aff_cls(uint16_t couleur) { // Clear Screen Black)
+    tft.fillScreen(couleur);// 19 19 70 - ST7735_BLACK);
+}
 void aff_Meteo(bool up) {
     int l;
     tft.setTextColor(tft.Color565(0xA0,0xA0,0xF0),ST7735_BLACK);
     tft.setTextSize(3);
-    tft.setCursor(31,22);tft.println("PARIS");
+    tft.setCursor(31,22);tft.println(menu_lieux[meteoS]);
     tft.setTextSize(1);
     tft.setCursor(140,22);tft.println(String::format("(%c)",Meteo.jour ? 'J':'N'));
+    tft.setCursor(50,45);tft.println(lieux[meteoS]);
     tft.setTextColor(tft.Color565(0x80,0x80,0xC0),ST7735_BLACK);
     tft.setTextSize(2);
     if (up) {
@@ -618,29 +647,51 @@ int WebCde(String  Cde) {
     return commande;
 } // end WebCde
 void bouton1() {
-    if (!Lamp_on) {
-        tm_b_cycle = true;
-        //menu = (menu & 0xFF00) + (((menu & 0x00FF) + 1) % m_count);
-        //wait_start = 0x00;
-        menuS = (menuS + 1) % 4;
-    } else {
-        Lamp_w = (Lamp_w+1) % 13;
-        Lamp_couleur = Lamp_l[Lamp_w] << 24;
-        Lamp_color(Lamp_couleur,Lamp_mask);
+    switch (mode) {
+        case MODE_CYCLE:
+            if (Lamp_on) {
+                Lamp_w = (Lamp_w+1) % 13;
+                Lamp_couleur = Lamp_l[Lamp_w] << 24;
+                Lamp_color(Lamp_couleur,Lamp_mask);
+            } else {
+                tm_b_cycle = true; 
+            }
+            break;
+        case MODE_LAMPE:
+            break;
+        case MODE_MENU:
+            menuS = (menuS + 1) % menuC;
+            menu = (menu + 1) % menuC;
+            //menu = (menu & 0xFF00) + (((menu & 0x00FF) + 1) % m_count);
+            //wait_start = 0x00;
+            break;
     }
 }
 void bouton2() {
-    if (mode == MODE_CYCLE) Lamp_auto = !Lamp_auto;
+    switch (mode) {
+        case MODE_CYCLE:
+            Lamp_auto = !Lamp_auto;
+            Lamp_on = true;
+            break;
+        case MODE_LAMPE:
+            // change couleur
+            break;
+        case MODE_MENU:
+            menuO = menu;
+            menu *= 10;
+            //menu = (menu & 0xFF00) + (((menu & 0x00FF) + 1) % m_count);
+            //wait_start = 0x00;
+            break;
+    }
 }
 void bouton3() {
     Lamp_on = !Lamp_on;
-    if (Lamp_on) 
-        { mode=MODE_LAMPE; }
-        else
-        { mode=MODE_CYCLE; }
 }
 //------------------------------------------------------------ MENU -------
 void affMenu(short l, char* menutxt[] ) {
+    aff_Entete();
+    size_t length = sizeof(menutxt); ///sizeof(*a)
+    tft.setCursor(120,5);tft.println(String::format("%d",length));
     for (short i=0; i<l;printMenu(i++,menuS, &menutxt[i-1]));
 }
 void printMenu(short n, short s, char* menutxt[]) {
@@ -648,5 +699,5 @@ void printMenu(short n, short s, char* menutxt[]) {
     tft.setCursor(3,(n*15)+42);
     tft.setTextSize(1);
     tft.setTextColor(ST7735_WHITE);
-    tft.print(*menutxt); //menu_system[n]);
+    tft.print(*menutxt);
 }
