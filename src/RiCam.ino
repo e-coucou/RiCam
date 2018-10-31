@@ -34,7 +34,7 @@
 				          \____________/ 
 */
 void aff_cls(uint16_t couleur=ST7735_BLACK);
-void aff_Click(char * szMess[], uint16_t couleur = ST7735_RED);
+void aff_Click(String szMess, uint16_t couleur = ST7735_RED);
 // ---- Commande Web
 int WebCde(String Cde);
 bool serial_on;
@@ -232,43 +232,60 @@ void loop() {
                 bouton3();
                 break;
             case -1 : // 1 long : on switch sur le mode menu
+                aff_cls();
                 if (mode == MODE_MENU) {
                     mode = MODE_CYCLE;
                 } else {
                     mode = MODE_MENU;
-                    menuC = 5; menuS = 0; menu = 1;
+                    menuC = 5; menuS = 1; menu = 1;
                 }
                 break;
         }
         Button = 0x00;
         down.clicks = 0;
         if (mode == MODE_MENU) {
-          aff_Status(0,120,String::format("[%d]",menu));
           switch (menu) {
-            case 50: // Exit menu, retour au mode Cycle
+            case 0x50: // Exit menu, retour au mode Cycle
                 mode = MODE_CYCLE;
                 tm_b_cycle = true;
-            case 130:
-                menuC = 5; menuS = 0; menu = 1;
-            case 0 : menu=5;
+                break;
+            case 0x0130:case 0x330:
+                menuC = 5; menuS = 1; menu = 1;
+            case 0 : menu=1; menuS = 1;
             case 1 : // Capteurs
                 aff_cls();
-            case 2 : // Gyro
+            case 2 : // Gyro 
             case 3 : // Meteo
             case 4 : // Lampe
             case 5 : // Exit
                 affMenu(menuC,&menu_principal[0]);
                 break;
-            case 10: 
+            case 0x10: case 0x14 : menu=0x10;
                 menuC = 4;
-                aff_Click("Capteur 1"); break;
-            case 11:    aff_Click("Capteur 2"); break;
-            case 12:    aff_Click("Capteur 3"); break;
-            case 13:    aff_Click("Retour (..)",ST7735_BLUE); break;
+                aff_Click("Capt. 1"); break;
+            case 0x11:    aff_Click("Capt. 2"); break;
+            case 0x12:    aff_Click("Capt. 3"); break;
+            case 0x13:    aff_Click("Retour (..)",ST7735_BLUE); break;
+            case 0x3000: case 0x3010 : case 0x3020 : case 0x3030: case 0x3040 : case 0x3050 : case 0x3060 : case 0x3070:
+                meteoS = uint8_t(menuO & 0x0F);
+            case 0x30: case 0x34 : menu=0x30;
+                menuC = 4;menuS=1;aff_cls();
+            case 0x31:
+            case 0x32:
+            case 0x33:
+                affMenu(menuC,&menu_meteo[0]);
+                break;
+            case 0x300: case 0x308 : menu=0x300;
+                menuC = 8; menuS= 1; aff_cls();
+            case 0x301 : case 0x302 : case 0x303: case 0x304 : case 0x305 : case 0x306 : case 0x307:
+                affMenu(menuC,&menu_lieux[0]);
+                break;
+            case 0x310 : getRequest();menu=0x30;menuS=1;break;
             default : //erreur on revient ancien menu car menu non implémenté
                 menu = menuO;
                 break;
           }
+          aff_Status(0,80,String::format("[%X] %d",menu,meteoS));
         }
         aff_Entete();
     }
@@ -405,8 +422,8 @@ int Lamp_color(uint32_t color, uint32_t mask) {
 #if defined TFT
 // tft 128x160
 void init_tft() {
-//    digitalWrite(POWER,HIGH);
-//    delay(30);
+    //    digitalWrite(POWER,HIGH);
+    //    delay(30);
     tft.initR(INITR_BLACKTAB);   // initialize a ST7735S chip, black tab
     tft.setRotation(0x03);
 }
@@ -477,7 +494,7 @@ void aff_Date() {
     tft.setCursor(51,72);tft.println(String::format(" %2d",annee-2000));
     tft_update = false;
 }
-void aff_Click(char * szMess[],uint16_t couleur) {
+void aff_Click(String szMess,uint16_t couleur) {
     //    tft.fillRect(0,0,tft.width(),tft.height(),ST7735_BLACK);
     //    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE));
     tft.fillScreen(couleur);
@@ -490,14 +507,14 @@ void aff_Click(char * szMess[],uint16_t couleur) {
 void aff_cls(uint16_t couleur) { // Clear Screen Black)
     tft.fillScreen(couleur);// 19 19 70 - ST7735_BLACK);
 }
-void aff_Meteo(bool up) {
+void aff_Meteo(bool up) { // à perfectionner ...
     int l;
     tft.setTextColor(tft.Color565(0xA0,0xA0,0xF0),ST7735_BLACK);
     tft.setTextSize(3);
     tft.setCursor(31,22);tft.println(menu_lieux[meteoS]);
     tft.setTextSize(1);
     tft.setCursor(140,22);tft.println(String::format("(%c)",Meteo.jour ? 'J':'N'));
-    tft.setCursor(50,45);tft.println(lieux[meteoS]);
+    tft.setCursor(100,45);tft.println(lieux[meteoS]);
     tft.setTextColor(tft.Color565(0x80,0x80,0xC0),ST7735_BLACK);
     tft.setTextSize(2);
     if (up) {
@@ -514,13 +531,13 @@ void aff_Meteo(bool up) {
         tft.setCursor(l,105);tft.println(Meteo.PressionTrend);
     }
 }
-void aff_Trame() {
+void aff_Trame() { // dashboard ...
   tft.fillScreen(ST7735_BLACK);
-  //  tft.drawFastHLine(0,33,160,ST7735_WHITE);
-  //  tft.drawFastHLine(0,73,160,ST7735_WHITE);
-  //  tft.drawFastVLine(40,0,33,ST7735_WHITE);
-  //  tft.drawFastVLine(80,0,33,ST7735_WHITE);
-  //  tft.drawFastVLine(120,0,120,ST7735_WHITE);
+  tft.drawFastHLine(0,33,160,ST7735_WHITE);
+  tft.drawFastHLine(0,73,160,ST7735_WHITE);
+  tft.drawFastVLine(40,0,33,ST7735_WHITE);
+  tft.drawFastVLine(80,0,33,ST7735_WHITE);
+  tft.drawFastVLine(120,0,120,ST7735_WHITE);
   tft.setTextColor(tft.Color565(0x40,0x40,0x40),ST7735_BLACK);
   tft.setTextSize(1);
   tft.setCursor(1,121);
@@ -544,7 +561,8 @@ void getRequest() {
   request.hostname = "apidev.accuweather.com"; //from internet
   request.port = 80;
   //request.path = "/currentconditions/v1/623.json?language=en&details=false&apikey=hoArfRosT1215"; //OU3bvqL9RzlrtSqXAJwg93E1Tlo3grVS";  
-  request.path = "/currentconditions/v1/623.json?language=fr-fr&details=true&apikey=hoArfRosT1215"; //from inetnet
+  String loc = String::format("%s",lieux[meteoS]);
+  request.path = "/currentconditions/v1/"+loc+".json?language=fr-fr&details=true&apikey=hoArfRosT1215"; //from inetnet
   request.body = "";
   http.get(request, response, headers);
   /*
@@ -647,6 +665,7 @@ int WebCde(String  Cde) {
     Particle.publish("Status", szMess);
     return commande;
 } // end WebCde
+//------------------------------------------------------------------ BOUTONS -----
 void bouton1() {
     switch (mode) {
         case MODE_CYCLE:
@@ -661,8 +680,8 @@ void bouton1() {
         case MODE_LAMPE:
             break;
         case MODE_MENU:
-            menuS = (menuS + 1) % menuC;
-            menu = ((menu % menuC) + 1) % menuC;
+            menuS = (menuS % menuC) +1;
+            menu = (menu & 0xFFF0) + (((menu&0x000f) % menuC) + 1);
             //menu = (menu & 0xFF00) + (((menu & 0x00FF) + 1) % m_count);
             //wait_start = 0x00;
             break;
@@ -679,7 +698,7 @@ void bouton2() {
             break;
         case MODE_MENU:
             menuO = menu;
-            menu *= 10;
+            menu *= 0x10;
             //menu = (menu & 0xFF00) + (((menu & 0x00FF) + 1) % m_count);
             //wait_start = 0x00;
             break;
@@ -688,16 +707,28 @@ void bouton2() {
 void bouton3() {
     Lamp_on = !Lamp_on;
 }
+void bouton1L() {
+
+}
 //------------------------------------------------------------ MENU -------
 void affMenu(short l, char* menutxt[] ) {
     aff_Entete();
     size_t length = sizeof(menutxt); ///sizeof(*a)
-    tft.setCursor(120,5);tft.println(String::format("%d",length));
-    for (short i=0; i<l;printMenu(i++,menuS, &menutxt[i-1]));
+    bool bis = false;
+    if (l>5) bis=true;
+    tft.setCursor(130,10);tft.println(String::format("l=%d/%d-%d",length,l,menuS));
+    for (short i=0; i<l;printMenu(i++,menuS, &menutxt[i-1],bis));
 }
-void printMenu(short n, short s, char* menutxt[]) {
-    tft.fillRect(1,(n*15)+40,tft.width()-2,13,(n==(s-1)) ? ST7735_BLUE : 0x5555);
-    tft.setCursor(3,(n*15)+42);
+void printMenu(short n, short s, char* menutxt[],bool bis) {
+    short dx=0,dy=0;
+    if (bis) {
+        if (n>4) { dx=80;dy=5;}
+        tft.fillRect(1+dx,((n-dy)*15)+40,tft.width()/2-2,13,(n==(s-1)) ? ST7735_BLUE : 0x5555);
+        tft.setCursor(3+dx,((n-dy)*15)+42);
+    } else {
+        tft.fillRect(1,(n*15)+40,tft.width()-2,13,(n==(s-1)) ? ST7735_BLUE : 0x5555);
+        tft.setCursor(3,(n*15)+42);
+    }
     tft.setTextSize(1);
     tft.setTextColor(ST7735_WHITE);
     tft.print(*menutxt);
