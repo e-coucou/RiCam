@@ -250,6 +250,7 @@ void loop() {
                 tm_b_cycle = true;
             case 130:
                 menuC = 5; menuS = 0; menu = 1;
+            case 0 : menu=5;
             case 1 : // Capteurs
                 aff_cls();
             case 2 : // Gyro
@@ -263,7 +264,7 @@ void loop() {
                 aff_Click("Capteur 1"); break;
             case 11:    aff_Click("Capteur 2"); break;
             case 12:    aff_Click("Capteur 3"); break;
-            case 13:    aff_Click("Retour",ST7735_BLUE); break;
+            case 13:    aff_Click("Retour (..)",ST7735_BLUE); break;
             default : //erreur on revient ancien menu car menu non implémenté
                 menu = menuO;
                 break;
@@ -661,7 +662,7 @@ void bouton1() {
             break;
         case MODE_MENU:
             menuS = (menuS + 1) % menuC;
-            menu = (menu + 1) % menuC;
+            menu = ((menu % menuC) + 1) % menuC;
             //menu = (menu & 0xFF00) + (((menu & 0x00FF) + 1) % m_count);
             //wait_start = 0x00;
             break;
