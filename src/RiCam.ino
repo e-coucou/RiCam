@@ -14,7 +14,7 @@
 #define NAME "RiCam"
 #define AUTEUR "eCoucou"
 #define VERSION_MAJ 0
-#define VERSION_MIN 3
+#define VERSION_MIN 4
 #define RELEASE "oct. 2018"
 #define CREATE "oct. 2018"
 /* 
@@ -35,6 +35,7 @@
 */
 void aff_cls(uint16_t couleur=ST7735_BLACK);
 void aff_Click(String szMess, uint16_t couleur = ST7735_RED);
+void aff_Compteur(float val, char *mesure, float r = 0.0);
 // ---- Commande Web
 int WebCde(String Cde);
 bool serial_on;
@@ -262,10 +263,10 @@ void loop() {
                 break;
             case 0x10: case 0x14 : menu=0x10;
                 menuC = 4;
-                aff_Click("Capt. 1"); break;
-            case 0x11:    aff_Click("Capt. 2"); break;
-            case 0x12:    aff_Click("Capt. 3"); break;
-            case 0x13:    aff_Click("Retour (..)",ST7735_BLUE); break;
+                aff_Compteur(bme_t,"Temp..."); break;
+            case 0x11: aff_Compteur(bme_p,"Pression",(bme_p-913.25)/2.0); break;
+            case 0x12: aff_Compteur(illumination,"Luminosite"); break;
+            case 0x13: aff_Click("Retour (..)",ST7735_BLUE); break;
             case 0x3000: case 0x3010 : case 0x3020 : case 0x3030: case 0x3040 : case 0x3050 : case 0x3060 : case 0x3070:
                 meteoS = uint8_t(menuO & 0x0F);
             case 0x30: case 0x34 : menu=0x30;
@@ -477,10 +478,10 @@ void aff_Entete() { //128x160
     tft.setTextColor(tft.Color565(0xFF,0x10,0x00),ST7735_BLACK);
     tft.setCursor(1,1);
     tft.setTextSize(1);
-    tft.println(String::format("RiCam (%d)",mode));
-    tft.drawFastHLine(0,126,75,ST7735_BLUE);
-    tft.drawFastHLine(75,126,10,ST7735_WHITE);
-    tft.drawFastHLine(85,126,75,ST7735_RED);
+    tft.println(String::format("RiCam %d.%d [%d]",VERSION_MAJ,VERSION_MIN,mode));
+    tft.drawFastHLine(0,127,75,ST7735_BLUE);
+    tft.drawFastHLine(75,127,10,ST7735_WHITE);
+    tft.drawFastHLine(85,127,75,ST7735_RED);
     tft_update = false;
 }
 void aff_Date() {
@@ -489,18 +490,19 @@ void aff_Date() {
     int annee = int(Time.year());
     tft.setTextColor(tft.Color565(0xA0,0xA0,0xF0),ST7735_BLACK);
     tft.setTextSize(3);
-    tft.setCursor(51,26);tft.println(String::format("%s%d ",jour>9 ? "":"0",jour));
-    tft.setCursor(51,49);tft.println(Mois[mois-1]);
-    tft.setCursor(51,72);tft.println(String::format(" %2d",annee-2000));
+    tft.setCursor(51,29);tft.println(String::format("%s%d ",jour>9 ? "":"0",jour));
+    tft.setCursor(51,52);tft.println(Mois[mois-1]);
+    tft.setCursor(51,75);tft.println(String::format(" %2d",annee-2000));
     tft_update = false;
 }
 void aff_Click(String szMess,uint16_t couleur) {
-    //    tft.fillRect(0,0,tft.width(),tft.height(),ST7735_BLACK);
+    tft.fillRect(0,12,tft.width(),tft.height()-15,couleur);
     //    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE));
-    tft.fillScreen(couleur);
+    //tft.fillScreen(couleur);
+    int l = strlen(szMess);
     tft.setTextColor(ST7735_WHITE);
-    tft.setCursor(10,50);
-    tft.setTextSize(4);
+    tft.setCursor(80-(l*5),50);
+    tft.setTextSize(2);
     tft.println(szMess);
     tft_update = false;
 }
@@ -509,25 +511,28 @@ void aff_cls(uint16_t couleur) { // Clear Screen Black)
 }
 void aff_Meteo(bool up) { // à perfectionner ...
     int l;
-    tft.setTextColor(tft.Color565(0xA0,0xA0,0xF0),ST7735_BLACK);
-    tft.setTextSize(3);
-    tft.setCursor(31,22);tft.println(menu_lieux[meteoS]);
+    tft.setTextColor(tft.Color565(0xA0,0xA0,0xF0),ST7735_BLUE);
+    tft.setTextSize(2);
+    l = strlen(menu_lieux[menuS]);
+    tft.fillRect(1,20,tft.width()-2,19,ST7735_BLUE);
+    tft.setCursor(80-(l*5),22);tft.println(menu_lieux[meteoS]);
     tft.setTextSize(1);
     tft.setCursor(140,22);tft.println(String::format("(%c)",Meteo.jour ? 'J':'N'));
-    tft.setCursor(100,45);tft.println(lieux[meteoS]);
     tft.setTextColor(tft.Color565(0x80,0x80,0xC0),ST7735_BLACK);
+    l=strlen(lieux[meteoS]);
+    tft.setCursor(155-l*5,42);tft.println(lieux[meteoS]);
     tft.setTextSize(2);
     if (up) {
         tft.setCursor(20,65);tft.println(String::format("%3.0f C %2d%%",Meteo.Temperature,Meteo.Humidite));
         l = strlen(Meteo.ciel);
-        l = 79 - l/2*7;
+        l = 79 - l/2*5;
         tft.setTextSize(1);
         tft.setCursor(l,85);tft.println(Meteo.ciel);
     } else {
         tft.setTextSize(1);
         tft.setCursor(10,65);tft.println(Meteo.Sens+String::format(" %3.0f km/h",Meteo.Vitesse));
         tft.setCursor(10,85);tft.println(String::format("%4.0f hPa",Meteo.Pression));
-        l = 79 - strlen(Meteo.PressionTrend)/2*7;
+        l = 79 - strlen(Meteo.PressionTrend)/2*5;
         tft.setCursor(l,105);tft.println(Meteo.PressionTrend);
     }
 }
@@ -550,6 +555,31 @@ void aff_Trame() { // dashboard ...
   aff_Date();
   //  getRequest();
   //  getBatterie();
+}
+void aff_Compteur(float val, char *mesure, float r) {
+    int valeur;    
+    if (r==0.0) {
+        valeur = 225 - (val / 100.0 * 270.0);
+    } else {
+        valeur = 225 - (r / 100.0 * 270.0);
+    }
+    aff_cls();
+    aff_Titre(mesure);
+    //    tft.fillRect(0,40,tft.width(),110,ST7735_BLACK);
+    tft.drawRay(64,82,33,38,-45,225,6 ,tft.Color565(0xDC,0xDC,0xDC)); // 
+    tft.drawRay(64,82,30,38,-45,225,27 ,ST7735_WHITE); // 
+    tft.drawRay(64,82,24,38,valeur-2,valeur+2,1,ST7735_GREEN); // 
+    tft.setCursor(45,75);
+    tft.setTextSize(1);
+    tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
+    tft.print(String::format("%4.1f",val));
+}
+void aff_Titre(char* titre) {
+    //tft.fillRect(0,0,tft.width(),24,ST7735_BLACK);
+    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE),ST7735_BLACK);
+    tft.setCursor(0,12);
+    tft.setTextSize(1);
+    tft.println(titre);
 }
 #endif
 //------------------------------------------------------------------ Web Information ------
@@ -713,10 +743,8 @@ void bouton1L() {
 //------------------------------------------------------------ MENU -------
 void affMenu(short l, char* menutxt[] ) {
     aff_Entete();
-    size_t length = sizeof(menutxt); ///sizeof(*a)
     bool bis = false;
     if (l>5) bis=true;
-    tft.setCursor(130,10);tft.println(String::format("l=%d/%d-%d",length,l,menuS));
     for (short i=0; i<l;printMenu(i++,menuS, &menutxt[i-1],bis));
 }
 void printMenu(short n, short s, char* menutxt[],bool bis) {
