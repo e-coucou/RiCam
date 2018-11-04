@@ -38,7 +38,7 @@ void aff_Click(String szMess, uint16_t couleur = ST7735_RED);
 void aff_Compteur(float val, char *mesure, float r = 0.0);
 // ---- Commande Web
 int WebCde(String Cde);
-bool serial_on;
+bool serial_on, b_Message = false;
 uint8_t mode = MODE_CYCLE; // 0=cycle, 1=lampe, 2= menu
 
 String Mois[12] = {"JAN", "FEV", "MAR", "AVR", "MAI", "JUN", "JUI", "AOU", "SEP", "OCT", "NOV", "DEC"};
@@ -60,6 +60,7 @@ uint8_t meteoS = 0;
 double illum_m = 0;
 bool alert_illum  = false;
 double luminosite,illumination;  // mesure de la luminosite
+double pression, temperature;
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_24MS, TCS34725_GAIN_1X);
 uint16_t clear, red, green, blue;
 double r, g, b, wh;
@@ -135,6 +136,8 @@ void setup() {
   Time.zone(+1); // +1 heure d'hiver vs +2 ete
   Particle.variable("luminosite",luminosite);
   Particle.variable("illumination",illumination);
+  Particle.variable("temperature",temperature);
+  Particle.variable("pression",pression);
   Wire.setSpeed(CLOCK_SPEED_100KHZ);
   Wire.begin();
   lampe.begin();
@@ -162,8 +165,8 @@ void setup() {
     gyro.begin();
     accel.begin();
     mag.begin();
+  aff_Mosaic();
   delay(3000);
-  aff_Trame();
 }
 //---------------------------------------
 // variables LOOP
@@ -171,9 +174,8 @@ volatile unsigned long now, start = 0, count =0, iteration=0;
 volatile int update = 0;
 uint32_t lumiere=0x0;
 bool tft_update=true;
-char szMessage[30];
+char szMessage[144];
 sensors_event_t event;
-double bme_t,bme_p;
 uint8_t regint = 0x00; // registre d'interruptions
 //-------------------------------------------------------------------------------- LOOP ---
 void loop() {
@@ -213,15 +215,19 @@ void loop() {
       Lamp_color(0x0,0xFFFF); 
   }
   if (tm_b_aff) {
-      aff_Status(1,120,"...");
+      aff_Code("...");
       getRequest();
       tm_b_aff = false;
+  }
+  if (b_Message) {
+      aff_Click(szMessage);
   }
   //----------------------------------------------------------------- le Bouton -------------
     down.Update();
     if (down.clicks !=0) {
+        b_Message = false;
         Button = down.clicks;
-        tm_cycle.reset();
+        tm_cycle.reset(); b_Message=false;
         switch (Button) {
             case 1 : // 1 click : on fait +1 sur luminosité et sous menu
                 bouton1();
@@ -250,7 +256,7 @@ void loop() {
                 mode = MODE_CYCLE;
                 tm_b_cycle = true;
                 break;
-            case 0x0130:case 0x330:
+            case 0x0130: case 0x330: case 0x0230: 
                 menuC = 5; menuS = 1; menu = 1;
             case 0 : menu=1; menuS = 1;
             case 1 : // Capteurs
@@ -262,11 +268,15 @@ void loop() {
                 affMenu(menuC,&menu_principal[0]);
                 break;
             case 0x10: case 0x14 : menu=0x10;
-                menuC = 4;
-                aff_Compteur(bme_t,"Temp..."); break;
-            case 0x11: aff_Compteur(bme_p,"Pression",(bme_p-913.25)/2.0); break;
+                menuC = 4; aff_Compteur(temperature,"Temp..."); break;
+            case 0x11: aff_Compteur(pression,"Pression",(pression-913.25)/2.0); break;
             case 0x12: aff_Compteur(illumination,"Luminosite"); break;
             case 0x13: aff_Click("Retour (..)",ST7735_BLUE); break;
+            case 0x20: case 0x24: menu=0x20;
+                menuC = 4;aff_cls(); tft.setCursor(10,20); tft.println(String::format("%5.0f",event.gyro.x));break;
+            case 0x21: aff_cls();tft.setCursor(10,20);tft.println(String::format("%5.0f",event.acceleration.x));break;
+            case 0x22: aff_cls();tft.setCursor(10,20);tft.println(String::format("%5.0f",event.magnetic.x));break;
+            case 0x23: aff_Click("Retour (..)",ST7735_BLUE); break;
             case 0x3000: case 0x3010 : case 0x3020 : case 0x3030: case 0x3040 : case 0x3050 : case 0x3060 : case 0x3070:
                 meteoS = uint8_t(menuO & 0x0F);
             case 0x30: case 0x34 : menu=0x30;
@@ -331,15 +341,19 @@ void loop() {
     //-- webhook : toutes les variables commencent par Rky_
     //--
     if (tm_b_cloud) {
+        aff_Code("Cld");
         bmp.getEvent(&event);
         if (event.pressure)
         {
-            float temperature;
+            float tempe;
             /* Display ambient temperature in C */
-            bmp.getTemperature(&temperature);
-            bme_t = double(temperature);
-            bme_p = double(event.pressure);
+            bmp.getTemperature(&tempe);
+            temperature = double(tempe);
+            pression = double(event.pressure);
         }
+        gyro.getEvent(&event);
+        accel.getEvent(&event);
+        mag.getEvent(&event);
         switch(tm_cloud_rot++) {
             case 0x00 :
                 Particle.publish("Rky_I",String(illumination),60,PUBLIC);
@@ -366,13 +380,13 @@ void loop() {
                 //Particle.publish("Rky_Ro",String(roll),60,PUBLIC);
                 break;
             case 0x08 :
-                Particle.publish("Rky_T",String(bme_t),60,PUBLIC);
+                Particle.publish("Rky_T",String(temperature),60,PUBLIC);
                 break;
             case 0x09 :
                 //Particle.publish("Rky_H",String(bme_h),60,PUBLIC);
                 break;
             case 0x0A :
-                Particle.publish("Rky_P",String(bme_p),60,PUBLIC);
+                Particle.publish("Rky_P",String(pression),60,PUBLIC);
                 break;
             case 0x0B :
                 Particle.publish("Rky_Lm",String(lumiere),60,PUBLIC);
@@ -536,6 +550,12 @@ void aff_Meteo(bool up) { // à perfectionner ...
         tft.setCursor(l,105);tft.println(Meteo.PressionTrend);
     }
 }
+void aff_Mosaic() {
+    tft.fillRect(0,20,tft.width(),126,ST7735_WHITE);
+    tft.fillRect(1,21,31,31,ST7735_BLUE);
+    tft.fillRect(33,21,31,31,ST7735_YELLOW);
+    tft.fillRect(1,53,64,31,ST7735_CYAN);
+}
 void aff_Trame() { // dashboard ...
   tft.fillScreen(ST7735_BLACK);
   tft.drawFastHLine(0,33,160,ST7735_WHITE);
@@ -555,6 +575,12 @@ void aff_Trame() { // dashboard ...
   aff_Date();
   //  getRequest();
   //  getBatterie();
+}
+void aff_Code(String message) { //affiche le code
+  tft.setTextColor(ST7735_CYAN,ST7735_BLACK);
+  tft.setTextSize(1);
+  tft.setCursor(0,120);
+  tft.println(message);
 }
 void aff_Compteur(float val, char *mesure, float r) {
     int valeur;    
@@ -600,7 +626,7 @@ void getRequest() {
   tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
   tft.setTextSize(1);
   tft.println(response.status);*/
-  aff_Status(120,1,String::format("%d",response.status));
+  aff_Code(String::format("%d",response.status));
   //  Serial.println(request.url);
   //  Serial.println(response.status);
   //  Serial.println(response.body);
@@ -624,7 +650,7 @@ void getRequest() {
     Meteo.PressionTrend = KeyJson("LocalizedText",jsonTemp);
     Meteo.data = true;
   }
-  Particle.process();
+  //  Particle.process();
  }  
 
 String KeyJson(const String& k, const String& j){
@@ -674,8 +700,8 @@ int WebCde(String  Cde) {
             sprintf(szMess,"Change la couleur wgrb : %X:%X:%X:%X",arg[0],arg[1],arg[2],arg[3]);
             break;
         case 0xB0: // affiche un message sur l'écran
-            sprintf(szMess,"%s",arg[0]);
-            aff_Status(20,1,szMess);
+            sprintf(szMessage,"%s",Cde);
+            b_Message = true;
             break;
         case 0xF0:// On/Off de la lampe
             Lamp_on = !Lamp_on;
