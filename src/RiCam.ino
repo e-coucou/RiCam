@@ -312,6 +312,7 @@ void loop() {
             aff_Status(45,20," ..  : valide");
             aff_Status(55,20," ... : lampe");
             aff_Status(65,20," --- : menu");
+            aff_Status(85,20,"by eCoucou 2018");
             break;
           case 0x01 :
             aff_Date();break;
@@ -329,7 +330,10 @@ void loop() {
                 aff_Status(50,10,"No data from Web !");
               }
               break;
-          default :
+          case 0x04 :
+              aff_Mosaic();
+              break;
+          case 0x05 :
             aff_Heure();tm_cloud_rot=0; break;
       }
   }
@@ -341,7 +345,7 @@ void loop() {
     //-- webhook : toutes les variables commencent par Rky_
     //--
     if (tm_b_cloud) {
-        aff_Code("Cld");
+        aff_Code("(.)");
         bmp.getEvent(&event);
         if (event.pressure)
         {
@@ -536,12 +540,17 @@ void aff_Meteo(bool up) { // à perfectionner ...
     l=strlen(lieux[meteoS]);
     tft.setCursor(155-l*5,42);tft.println(lieux[meteoS]);
     tft.setTextSize(2);
+    up=true;
     if (up) {
-        tft.setCursor(20,65);tft.println(String::format("%3.0f C %2d%%",Meteo.Temperature,Meteo.Humidite));
+        aff_Rect(0,0,String::format("%3.0f degC",Meteo.Temperature));
+        aff_Rect(0,1,String::format("%2d %%",Meteo.Humidite));
+        aff_Rect(1,0,String::format("%3.0f km/h",Meteo.Vitesse));
+        aff_Rect(1,1,String::format("%4.0f hPa",Meteo.Pression));
+        aff_Rect(2,0,Meteo.Sens);
         l = strlen(Meteo.ciel);
         l = 79 - l/2*5;
-        tft.setTextSize(1);
-        tft.setCursor(l,85);tft.println(Meteo.ciel);
+        tft.setCursor(l,95);tft.println(Meteo.ciel);
+        tft.setCursor(l,105);tft.println(Meteo.PressionTrend);
     } else {
         tft.setTextSize(1);
         tft.setCursor(10,65);tft.println(Meteo.Sens+String::format(" %3.0f km/h",Meteo.Vitesse));
@@ -581,7 +590,7 @@ void aff_Trame() { // dashboard ...
 void aff_Code(String message) { //affiche le code
   tft.setTextColor(ST7735_CYAN,ST7735_BLACK);
   tft.setTextSize(1);
-  tft.setCursor(0,120);
+  tft.setCursor(0,119);
   tft.println(message);
 }
 void aff_Compteur(float val, char *mesure, float r) {
@@ -680,11 +689,12 @@ int WebCde(String  Cde) {
     char *p = strtok(inputStr," ,.-=");
     p = strtok(NULL, " ,.-=");
     int arg[10];
-    String arg_s[10];
+    char *arg_s[10];
     int i=0;
     serial_on = Serial.isConnected();
     while (p != NULL)
     {
+    //    strcpy(arg_s[i],p); 
         arg[i++] = atoi(p);// & 0xFF;
         p = strtok (NULL, " ,.-");
     }
@@ -702,7 +712,7 @@ int WebCde(String  Cde) {
             sprintf(szMess,"Change la couleur wgrb : %X:%X:%X:%X",arg[0],arg[1],arg[2],arg[3]);
             break;
         case 0xB0: // affiche un message sur l'écran
-            sprintf(szMessage,"%s",Cde);
+            sprintf(szMessage,"%s",arg_s[0]);
             b_Message = true;
             break;
         case 0xF0:// On/Off de la lampe
@@ -788,4 +798,11 @@ void printMenu(short n, short s, char* menutxt[],bool bis) {
     tft.setTextSize(1);
     tft.setTextColor(ST7735_WHITE);
     tft.print(*menutxt);
+}
+void aff_Rect(uint8_t n, uint8_t s, String szMess) {
+        tft.fillRect(1+s*80,(n*20)+40,tft.width()/2-2,13, 0x5555);
+        tft.setCursor(3+s*80,(n*20)+42);
+        tft.setTextSize(1);
+        tft.setTextColor(ST7735_WHITE);
+        tft.print(szMess);
 }
