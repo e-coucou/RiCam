@@ -551,10 +551,12 @@ void aff_Meteo(bool up) { // à perfectionner ...
     }
 }
 void aff_Mosaic() {
-    tft.fillRect(0,20,tft.width(),126,ST7735_WHITE);
-    tft.fillRect(1,21,31,31,ST7735_BLUE);
-    tft.fillRect(33,21,31,31,ST7735_YELLOW);
-    tft.fillRect(1,53,64,31,ST7735_CYAN);
+    tft.fillRect(0,20,tft.width(),126,ST7735_BLACK);
+    tft.fillRect(0,21,33,25,ST7735_YELLOW);tft.fillRect(0,48,33,14,ST7735_BLUE);tft.fillRect(0,63,33,30,ST7735_WHITE);tft.fillRect(0,96,33,30,ST7735_WHITE);
+    tft.fillRect(33,21,30,25,ST7735_BLACK);tft.fillRect(33,48,30,14,ST7735_WHITE);tft.fillRect(33,63,30,30,ST7735_YELLOW);tft.fillRect(33,96,30,30,ST7735_BLUE);
+    tft.fillRect(65,21,60,25,ST7735_YELLOW);tft.fillRect(65,48,60,14,ST7735_WHITE);tft.fillRect(65,63,60,30,ST7735_RED);tft.fillRect(65,96,60,30,ST7735_WHITE);
+    tft.fillRect(126,21,11,25,ST7735_WHITE);tft.fillRect(126,48,11,14,ST7735_YELLOW);tft.fillRect(126,63,11,30,ST7735_BLUE);tft.fillRect(126,96,11,30,ST7735_BLACK);
+    tft.fillRect(139,21,20,25,ST7735_RED);tft.fillRect(139,48,20,14,ST7735_RED);tft.fillRect(139,63,20,30,ST7735_WHITE);tft.fillRect(139,96,20,30,ST7735_YELLOW);
 }
 void aff_Trame() { // dashboard ...
   tft.fillScreen(ST7735_BLACK);
