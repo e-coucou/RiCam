@@ -55,7 +55,7 @@ struct stAccuWeather {
   bool jour, data;
 };
 stAccuWeather Meteo;
-uint8_t meteoS = 0;
+uint8_t meteoS = 4;  // 4=Lyon 6
 // Surveillance
 double illum_m = 0;
 bool alert_illum  = false;
@@ -200,6 +200,7 @@ void loop() {
          alert_illum = true;
          lumiere = uint8_t((15.0 - illumination)/15.0*255.0);
       } else { alert_illum = false;}
+      getAccelgyro();
     }
     if ((millis() % 1000) >= 900) {
         aff_Seconde();
@@ -273,8 +274,8 @@ void loop() {
             case 0x12: aff_Compteur(illumination,"Luminosite"); break;
             case 0x13: aff_Click("Retour (..)",ST7735_BLUE); break;
             case 0x20: case 0x24: menu=0x20;
-                menuC = 4;aff_cls(); tft.setCursor(10,20); tft.println(String::format("%5.0f",event.gyro.x));break;
-            case 0x21: aff_cls();tft.setCursor(10,20);tft.println(String::format("%5.0f",event.acceleration.x));break;
+                menuC = 4;aff_cls(); tft.setCursor(10,20); tft.println(String::format("%5.0f",f_gx));break;
+            case 0x21: aff_cls();tft.setCursor(10,20);tft.println(String::format("%5.0f",f_ax));break;
             case 0x22: aff_cls();tft.setCursor(10,20);tft.println(String::format("%5.0f",event.magnetic.x));break;
             case 0x23: aff_Click("Retour (..)",ST7735_BLUE); break;
             case 0x3000: case 0x3010 : case 0x3020 : case 0x3030: case 0x3040 : case 0x3050 : case 0x3060 : case 0x3070:
@@ -312,28 +313,24 @@ void loop() {
             aff_Status(45,20," ..  : valide");
             aff_Status(55,20," ... : lampe");
             aff_Status(65,20," --- : menu");
-            aff_Status(85,20,"by eCoucou 2018");
+            aff_Status(88,20,"by eCoucou 2018");
             break;
           case 0x01 :
             aff_Date();break;
           case 0x02 :
-              if (Meteo.data) {
-                  aff_Meteo(true);
-              } else {
+            if (Meteo.data) {
+                aff_Meteo(true);
+            } else {
                 aff_Status(50,10,"No data from Web !");
-              }
-              break;
+            }
+            break;
           case 0x03 :
-              if (Meteo.data) {
-                  aff_Meteo(false);
-              } else {
-                aff_Status(50,10,"No data from Web !");
-              }
-              break;
+            aff_Capteur();
+            break;
           case 0x04 :
-              aff_Mosaic();
-              break;
-          case 0x05 :
+            aff_Mosaic();
+            break;
+          default :
             aff_Heure();tm_cloud_rot=0; break;
       }
   }
@@ -355,9 +352,6 @@ void loop() {
             temperature = double(tempe);
             pression = double(event.pressure);
         }
-        gyro.getEvent(&event);
-        accel.getEvent(&event);
-        mag.getEvent(&event);
         switch(tm_cloud_rot++) {
             case 0x00 :
                 Particle.publish("Rky_I",String(illumination),60,PUBLIC);
@@ -529,34 +523,33 @@ void aff_cls(uint16_t couleur) { // Clear Screen Black)
 }
 void aff_Meteo(bool up) { // à perfectionner ...
     int l;
-    tft.setTextColor(tft.Color565(0xA0,0xA0,0xF0),ST7735_BLUE);
+    tft.setTextColor(tft.Color565(0xC0,0xC0,0xFF),ST7735_BLUE);
     tft.setTextSize(2);
     l = strlen(menu_lieux[menuS]);
     tft.fillRect(1,20,tft.width()-2,19,ST7735_BLUE);
-    tft.setCursor(80-(l*5),22);tft.println(menu_lieux[meteoS]);
+    tft.setCursor(80-(l*6),22);tft.println(menu_lieux[meteoS]);
     tft.setTextSize(1);
     tft.setCursor(140,22);tft.println(String::format("(%c)",Meteo.jour ? 'J':'N'));
     tft.setTextColor(tft.Color565(0x80,0x80,0xC0),ST7735_BLACK);
     l=strlen(lieux[meteoS]);
-    tft.setCursor(155-l*5,42);tft.println(lieux[meteoS]);
+    tft.setCursor(160-(l*6),118);tft.println(lieux[meteoS]);
     tft.setTextSize(2);
     up=true;
     if (up) {
         aff_Rect(0,0,String::format("%3.0f degC",Meteo.Temperature));
-        aff_Rect(0,1,String::format("%2d %%",Meteo.Humidite));
-        aff_Rect(1,0,String::format("%3.0f km/h",Meteo.Vitesse));
-        aff_Rect(1,1,String::format("%4.0f hPa",Meteo.Pression));
-        aff_Rect(2,0,Meteo.Sens);
-        l = strlen(Meteo.ciel);
-        l = 79 - l/2*5;
-        tft.setCursor(l,95);tft.println(Meteo.ciel);
-        tft.setCursor(l,105);tft.println(Meteo.PressionTrend);
+        aff_Rect(0,1,String::format(" H = %2d %%",Meteo.Humidite));
+        aff_Rect(1,1,String::format("%3.0f km/h",Meteo.Vitesse));
+        aff_Rect(2,0,String::format("%4.0f hPa",Meteo.Pression));
+        aff_Rect(1,0,"Vent: "+Meteo.Sens.substring(1,Meteo.Sens.length()-1));
+        l = strlen(Meteo.ciel)-2;
+        tft.setCursor(int(80.0 - l*6.0/2.0),102);tft.println(Meteo.ciel.substring(1,l+1));
+        tft.setCursor(83,82);tft.println(Meteo.PressionTrend.substring(1,Meteo.PressionTrend.length()-1));
     } else {
         tft.setTextSize(1);
         tft.setCursor(10,65);tft.println(Meteo.Sens+String::format(" %3.0f km/h",Meteo.Vitesse));
         tft.setCursor(10,85);tft.println(String::format("%4.0f hPa",Meteo.Pression));
         l = 79 - strlen(Meteo.PressionTrend)/2*5;
-        tft.setCursor(l,105);tft.println(Meteo.PressionTrend);
+        tft.setCursor(l,82);tft.println(Meteo.PressionTrend);
     }
 }
 void aff_Mosaic() {
@@ -610,6 +603,13 @@ void aff_Compteur(float val, char *mesure, float r) {
     tft.setTextSize(1);
     tft.setTextColor(ST7735_WHITE,ST7735_BLACK);
     tft.print(String::format("%4.1f",val));
+}
+void aff_Capteur() {
+    aff_Rect(0,0,String::format("%3.0f degC",temperature));
+    aff_Rect(0,1,String::format(" L = %4.0f",luminosite));
+    aff_Rect(1,0,String::format("%4.0f hPa",pression));
+    aff_Rect(2,0,String::format("%4.1f ",roll));
+    aff_Rect(3,0,String::format("%4.1f ",pitch));
 }
 void aff_Titre(char* titre) {
     //tft.fillRect(0,0,tft.width(),24,ST7735_BLACK);
@@ -805,4 +805,45 @@ void aff_Rect(uint8_t n, uint8_t s, String szMess) {
         tft.setTextSize(1);
         tft.setTextColor(ST7735_WHITE);
         tft.print(szMess);
+}
+void getRoll() {
+    //https://cdn-learn.adafruit.com/downloads/pdf/adafruit-10-dof-imu-breakout-lsm303-l3gd20-bmp180.pdf
+}
+void getAccelgyro() {
+    // read raw accel/gyro measurements from device
+    gyro.getEvent(&event);
+    f_gx = event.gyro.x;
+    f_gy = event.gyro.y;
+    f_gz = event.gyro.z;
+    accel.getEvent(&event);
+    f_ax = event.acceleration.x;
+    f_ay = event.acceleration.y;
+    f_az = event.acceleration.z;
+    mag.getEvent(&event);
+    /*
+    f_ax = ax *2.0 /32768.0 ;//- accelBias[0];// + 1.0; //add gravity ?
+    f_ay = ay *2.0 /32768.0 ;//- accelBias[1];
+    f_az = az *2.0 /32768.0 ;//- accelBias[2];
+    f_gx = gx *250.0 /32768.0 - gyroBias[0];
+    f_gy = gy *250.0 /32768.0 - gyroBias[1];
+    f_gz = gz *250.0 /32768.0 - gyroBias[2];
+    */
+}
+#define RAD_TO_DEG 180.0/M_PI
+void updateYPR() {
+    float apha = 0.93;  //0.96 ou 0.93 suivant plusieurs sources
+        //conversion accel en angles
+//            a_ay = -atan(f_ax/sqrt(pow(f_ay,2) + pow(f_az,2))) *180.0 / M_PI; // en deg
+//            a_ax = atan(f_ay/sqrt(pow(f_ax,2) + pow(f_az,2)))*180.0 / M_PI;
+//            a_az = atan((sqrt(pow(f_ax,2) + pow(f_ay,2)))/f_az)*180.0 / M_PI;
+            a_ay = -atan(f_ax/sqrt(f_ay*f_ay + f_az*f_az)) * RAD_TO_DEG ; //180.0 / M_PI; // en deg -> pitch
+            a_ax = atan(f_ay/sqrt(f_ax*f_ax + f_az*f_az))* RAD_TO_DEG; // -> roll
+            a_az = atan((sqrt(f_ax*f_ax + f_ay*f_ay))/f_az)* RAD_TO_DEG; // -> yaw
+//#ifdef RESTRICT_PITCH // Eq. 25 and 26
+  roll = atan2(f_ay, f_az) * RAD_TO_DEG;
+  pitch = atan(-f_ax / sqrt(f_ay * f_ay + f_az * f_az)) * RAD_TO_DEG;
+//#else // Eq. 28 and 29
+//  roll = atan(accY / sqrt(f_ax * f_ax + f_az * f_az)) * 180/M_PI;
+//  pitch = atan2(-f_ax, f_az) * 180/M_PI;
+//#endif
 }
