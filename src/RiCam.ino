@@ -164,7 +164,10 @@ void setup() {
     bmp.begin();
     gyro.begin();
     accel.begin();
-    mag.begin();
+    mag.enableAutoRange(true);
+    if (!mag.begin()) {
+        tft.println("mag not started");
+    }
   aff_Mosaic();
   delay(3000);
 }
@@ -200,7 +203,8 @@ void loop() {
          alert_illum = true;
          lumiere = uint8_t((15.0 - illumination)/15.0*255.0);
       } else { alert_illum = false;}
-      getAccelgyro();
+//      getAccelgyro();
+      getCompass();
     }
     if ((millis() % 1000) >= 900) {
         aff_Seconde();
@@ -212,7 +216,7 @@ void loop() {
       } else {
         Lamp_color(Lamp_couleur,Lamp_mask);
       }
-  } else {
+   } else {
       Lamp_color(0x0,0xFFFF); 
   }
   if (tm_b_aff) {
@@ -329,6 +333,15 @@ void loop() {
             break;
           case 0x04 :
             aff_Mosaic();
+            break;
+          case 0x05 :
+            aff_Mag();
+            break;
+          case 0x06 :
+            aff_Accel();
+            break;
+          case 0x07 :
+            aff_Gyro();
             break;
           default :
             aff_Heure();tm_cloud_rot=0; break;
@@ -612,11 +625,11 @@ void aff_Capteur() {
     aff_Rect(3,0,String::format("%4.1f ",pitch));
 }
 void aff_Titre(char* titre) {
-    //tft.fillRect(0,0,tft.width(),24,ST7735_BLACK);
-    tft.setTextColor(tft.Color565(0xAF,0xEE,0xEE),ST7735_BLACK);
-    tft.setCursor(0,12);
-    tft.setTextSize(1);
-    tft.println(titre);
+    tft.fillRect(1,20,tft.width()-2,19,ST7735_BLUE);
+    int l = strlen(titre);
+    tft.setTextColor(tft.Color565(0xC0,0xC0,0xFF),ST7735_BLUE);
+    tft.setTextSize(2);
+    tft.setCursor(80-l*6,22); tft.println(titre);
 }
 #endif
 //------------------------------------------------------------------ Web Information ------
@@ -806,8 +819,18 @@ void aff_Rect(uint8_t n, uint8_t s, String szMess) {
         tft.setTextColor(ST7735_WHITE);
         tft.print(szMess);
 }
-void getRoll() {
+void getCompass() {
     //https://cdn-learn.adafruit.com/downloads/pdf/adafruit-10-dof-imu-breakout-lsm303-l3gd20-bmp180.pdf
+  sensors_event_t event; 
+  mag.getEvent(&event);
+  float Pi = 3.14159;
+  // Calculate the angle of the vector y,x
+  float heading = (atan2(event.magnetic.y,event.magnetic.x) * 180) / Pi;
+  // Normalize to 0-360
+  if (heading < 0)
+  {    heading = 360 + heading;}
+  tft.setTextSize(1);
+  tft.setCursor(110,110);tft.println(String::format("%4.0f",heading));
 }
 void getAccelgyro() {
     // read raw accel/gyro measurements from device
@@ -819,7 +842,6 @@ void getAccelgyro() {
     f_ax = event.acceleration.x;
     f_ay = event.acceleration.y;
     f_az = event.acceleration.z;
-    mag.getEvent(&event);
     /*
     f_ax = ax *2.0 /32768.0 ;//- accelBias[0];// + 1.0; //add gravity ?
     f_ay = ay *2.0 /32768.0 ;//- accelBias[1];
@@ -846,4 +868,56 @@ void updateYPR() {
 //  roll = atan(accY / sqrt(f_ax * f_ax + f_az * f_az)) * 180/M_PI;
 //  pitch = atan2(-f_ax, f_az) * 180/M_PI;
 //#endif
+}
+//---------------------------------------------------------------- SENSOR ---
+void aff_Mag(void)
+{
+  sensor_t sensor;
+  mag.getSensor(&sensor);
+  aff_cls();
+  aff_Titre("Magnetic");
+  tft.setTextColor(tft.Color565(0xC0,0xC0,0xFF),ST7735_BLACK);
+  tft.setTextSize(1);
+  tft.setCursor(0,40);
+  tft.println(String::format("Sensor: %s",sensor.name));
+  tft.println(String::format("Version: %d",sensor.version));
+  tft.println(String::format("Id: %d",sensor.sensor_id));
+  tft.println(String::format("Max: %5.1f uT",sensor.max_value));
+  tft.println(String::format("Min: %5.1f uT",sensor.min_value));
+  tft.println(String::format("Resolution: %5.1f uT",sensor.resolution));
+  aff_Entete();
+}
+void aff_Accel(void)
+{
+  sensor_t sensor;
+  accel.getSensor(&sensor);
+  aff_cls();
+  aff_Titre("Accelerometre");
+  tft.setTextColor(tft.Color565(0xC0,0xC0,0xFF),ST7735_BLACK);
+  tft.setTextSize(1);
+  tft.setCursor(0,40);
+  tft.println(String::format("Sensor: %s",sensor.name));
+  tft.println(String::format("Version: %d",sensor.version));
+  tft.println(String::format("Id: %d",sensor.sensor_id));
+  tft.println(String::format("Max: %5.1f m/s^2",sensor.max_value));
+  tft.println(String::format("Min: %5.1f m/s^2",sensor.min_value));
+  tft.println(String::format("Resolution: %5.1f m/s^2",sensor.resolution));
+  aff_Entete();
+}
+void aff_Gyro(void)
+{
+  sensor_t sensor;
+  gyro.getSensor(&sensor);
+  aff_cls();
+  aff_Titre("Gyroscope");
+  tft.setTextColor(tft.Color565(0xC0,0xC0,0xFF),ST7735_BLACK);
+  tft.setTextSize(1);
+  tft.setCursor(0,40);
+  tft.println(String::format("Sensor: %s",sensor.name));
+  tft.println(String::format("Version: %d",sensor.version));
+  tft.println(String::format("Id: %d",sensor.sensor_id));
+  tft.println(String::format("Max: %5.1f rad/s",sensor.max_value));
+  tft.println(String::format("Min: %5.1f rad/s",sensor.min_value));
+  tft.println(String::format("Resolution: %5.1f rad/s",sensor.resolution));
+  aff_Entete();
 }
