@@ -23,4 +23,7 @@ float accelBias[3] = { 0.0, 0.0, 0.0 }; // gravity
 float gyroBias[3] = {-3.30, 2.29, 1.34 }; // my own !!
 double k_ax,k_ay,k_az; // angle corriger par filtre Kalman
 //Kalman kx,ky,kz; // Kalman filter
-double yaw, roll, pitch;
+double yaw, roll, pitch,heading;
+double compassFiltre = 0.0;
+sensors_vec_t   orientation;
+bool b_refresh = false;

@@ -97,6 +97,7 @@ ClickButton down(clk,LOW,CLICKBTN_PULLUP);
 int Button = 0;
 //--------------------------------------------- Capteurs  -------
 //--                                            -------
+Adafruit_10DOF                dof   = Adafruit_10DOF();
 Adafruit_BMP085_Unified       bmp   = Adafruit_BMP085_Unified(18001);
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(30301);
 Adafruit_LSM303_Mag_Unified   mag   = Adafruit_LSM303_Mag_Unified(30302);
@@ -162,12 +163,10 @@ void setup() {
   tm_cycle.start();
   // les capteurs ...
     bmp.begin();
-    gyro.begin();
+    if (!gyro.begin()) {    tft.println("gyro not started");    }
     accel.begin();
     mag.enableAutoRange(true);
-    if (!mag.begin()) {
-        tft.println("mag not started");
-    }
+    if (!mag.begin()) {    tft.println("mag not started"); }
   aff_Mosaic();
   delay(3000);
 }
@@ -203,8 +202,9 @@ void loop() {
          alert_illum = true;
          lumiere = uint8_t((15.0 - illumination)/15.0*255.0);
       } else { alert_illum = false;}
-//      getAccelgyro();
       getCompass();
+//      getAccelgyro();
+      if (b_refresh) { refresh();}
     }
     if ((millis() % 1000) >= 900) {
         aff_Seconde();
@@ -251,6 +251,7 @@ void loop() {
                     mode = MODE_MENU;
                     menuC = 5; menuS = 1; menu = 1;
                 }
+                b_refresh = false;
                 break;
         }
         Button = 0x00;
@@ -277,11 +278,13 @@ void loop() {
             case 0x11: aff_Compteur(pression,"Pression",(pression-913.25)/2.0); break;
             case 0x12: aff_Compteur(illumination,"Luminosite"); break;
             case 0x13: aff_Click("Retour (..)",ST7735_BLUE); break;
-            case 0x20: case 0x24: menu=0x20;
+            case 0x20: case 0x25: menu=0x20;
                 menuC = 4;aff_cls(); tft.setCursor(10,20); tft.println(String::format("%5.0f",f_gx));break;
             case 0x21: aff_cls();tft.setCursor(10,20);tft.println(String::format("%5.0f",f_ax));break;
             case 0x22: aff_cls();tft.setCursor(10,20);tft.println(String::format("%5.0f",event.magnetic.x));break;
-            case 0x23: aff_Click("Retour (..)",ST7735_BLUE); break;
+            case 0x23: aff_Capteur();
+                b_refresh=true;break;
+            case 0x24: b_refresh=false; aff_Click("Retour (..)",ST7735_BLUE); break;
             case 0x3000: case 0x3010 : case 0x3020 : case 0x3030: case 0x3040 : case 0x3050 : case 0x3060 : case 0x3070:
                 meteoS = uint8_t(menuO & 0x0F);
             case 0x30: case 0x34 : menu=0x30;
@@ -507,6 +510,7 @@ void aff_Entete() { //128x160
     tft.drawFastHLine(0,127,75,ST7735_BLUE);
     tft.drawFastHLine(75,127,10,ST7735_WHITE);
     tft.drawFastHLine(85,127,75,ST7735_RED);
+    tft.setCursor(120,95);
     tft_update = false;
 }
 void aff_Date() {
@@ -549,7 +553,7 @@ void aff_Meteo(bool up) { // à perfectionner ...
     tft.setTextSize(2);
     up=true;
     if (up) {
-        aff_Rect(0,0,String::format("%3.0f degC",Meteo.Temperature));
+        aff_Rect(0,0,String::format("%3.0f°C",Meteo.Temperature));
         aff_Rect(0,1,String::format(" H = %2d %%",Meteo.Humidite));
         aff_Rect(1,1,String::format("%3.0f km/h",Meteo.Vitesse));
         aff_Rect(2,0,String::format("%4.0f hPa",Meteo.Pression));
@@ -618,7 +622,8 @@ void aff_Compteur(float val, char *mesure, float r) {
     tft.print(String::format("%4.1f",val));
 }
 void aff_Capteur() {
-    aff_Rect(0,0,String::format("%3.0f degC",temperature));
+    aff_Titre("Capteurs");
+    aff_Rect(0,0,String::format("%3.0f°C",temperature));
     aff_Rect(0,1,String::format(" L = %4.0f",luminosite));
     aff_Rect(1,0,String::format("%4.0f hPa",pression));
     aff_Rect(2,0,String::format("%4.1f ",roll));
@@ -819,22 +824,45 @@ void aff_Rect(uint8_t n, uint8_t s, String szMess) {
         tft.setTextColor(ST7735_WHITE);
         tft.print(szMess);
 }
+void refresh() {
+    tft.setTextSize(1);
+    tft.setTextColor(ST7735_WHITE,ST7735_BLUE);
+//    refreshCapteur(0,0,String::format("%3.0f degC",temperature));
+//    refreshCapteur(0,1,String::format(" L = %4.0f",luminosite));
+//    refreshCapteur(1,0,String::format("%4.0f hPa",pression));
+    refreshCapteur(2,0,String::format("%4.1f ",roll));
+    refreshCapteur(2,1,String::format("%4.1f ",pitch));
+    refreshCapteur(3,0,String::format("%4.1f ",heading));
+}
+void refreshCapteur(uint8_t n, uint8_t s, String szMess) {
+        tft.setCursor(3+s*80,(n*20)+42);
+        tft.print(szMess);
+}
 void getCompass() {
     //https://cdn-learn.adafruit.com/downloads/pdf/adafruit-10-dof-imu-breakout-lsm303-l3gd20-bmp180.pdf
-  sensors_event_t event; 
-  mag.getEvent(&event);
-  float Pi = 3.14159;
-  // Calculate the angle of the vector y,x
-  float heading = (atan2(event.magnetic.y,event.magnetic.x) * 180) / Pi;
-  // Normalize to 0-360
-  if (heading < 0)
-  {    heading = 360 + heading;}
-  tft.setTextSize(1);
-  tft.setCursor(110,110);tft.println(String::format("%4.0f",heading));
+    sensors_event_t event; 
+    mag.getEvent(&event);
+    float Pi = 3.14159;
+    // Calculate the angle of the vector y,x
+    heading = (atan2(event.magnetic.y,event.magnetic.x) * 180) / Pi;
+    // Normalize to 0-360
+    if (heading < 0)
+        {    heading = 360 + heading;}
+    tft.setTextSize(1);
+    tft.setCursor(120,110);tft.println(String::format("%4.0f",heading));
+    /* Display the results (acceleration is measured in m/s^2) */
+    accel.getEvent(&event);
+    if (dof.accelGetOrientation(&event, &orientation))
+    {   pitch = orientation.pitch;
+        roll = orientation.roll;
+    }
+
 }
+#define RAD_TO_DEG 180.0/M_PI
 void getAccelgyro() {
     // read raw accel/gyro measurements from device
     gyro.getEvent(&event);
+//    gyro.read();
     f_gx = event.gyro.x;
     f_gy = event.gyro.y;
     f_gz = event.gyro.z;
@@ -842,6 +870,11 @@ void getAccelgyro() {
     f_ax = event.acceleration.x;
     f_ay = event.acceleration.y;
     f_az = event.acceleration.z;
+
+    roll = atan2(f_ay, f_az) * RAD_TO_DEG;
+    tft.setTextSize(1);
+    tft.setCursor(120,100);tft.println(String::format("%4.0f",roll));
+
     /*
     f_ax = ax *2.0 /32768.0 ;//- accelBias[0];// + 1.0; //add gravity ?
     f_ay = ay *2.0 /32768.0 ;//- accelBias[1];
@@ -851,7 +884,6 @@ void getAccelgyro() {
     f_gz = gz *250.0 /32768.0 - gyroBias[2];
     */
 }
-#define RAD_TO_DEG 180.0/M_PI
 void updateYPR() {
     float apha = 0.93;  //0.96 ou 0.93 suivant plusieurs sources
         //conversion accel en angles
