@@ -335,19 +335,19 @@ void loop() {
             aff_Capteur();
             break;
           case 0x04 :
-            aff_Mosaic();
+            aff_Heure();
             break;
-          case 0x05 :
+          case 0x15 : //05 pour afficher
             aff_Mag();
             break;
-          case 0x06 :
+          case 0x16 : //06
             aff_Accel();
             break;
-          case 0x07 :
+          case 0x17 : //07
             aff_Gyro();
             break;
           default :
-            aff_Heure();tm_cloud_rot=0; break;
+            aff_Mosaic();tm_cloud_rot=0; break;
       }
   }
    //-------------------------------------------------------------- CLOUD -------
@@ -490,7 +490,7 @@ void aff_Seconde() { //128x160
     tft.setCursor(145,1);
     tft.setTextSize(1);
     tft.println(String::format("%s%d",seconde>9 ? "":"0", seconde));
-    if (seconde==0 & tm_cycle_rot>3) {
+    if (seconde==0 & tm_cycle_rot==4) {
         aff_Heure();
     }
     tft_update = false;
@@ -856,13 +856,12 @@ void getCompass() {
     {   pitch = orientation.pitch;
         roll = orientation.roll;
     }
-
 }
 #define RAD_TO_DEG 180.0/M_PI
 void getAccelgyro() {
     // read raw accel/gyro measurements from device
     gyro.getEvent(&event);
-//    gyro.read();
+    //    gyro.read();
     f_gx = event.gyro.x;
     f_gy = event.gyro.y;
     f_gz = event.gyro.z;
@@ -902,8 +901,7 @@ void updateYPR() {
 //#endif
 }
 //---------------------------------------------------------------- SENSOR ---
-void aff_Mag(void)
-{
+void aff_Mag(void) {
   sensor_t sensor;
   mag.getSensor(&sensor);
   aff_cls();
@@ -919,8 +917,7 @@ void aff_Mag(void)
   tft.println(String::format("Resolution: %5.1f uT",sensor.resolution));
   aff_Entete();
 }
-void aff_Accel(void)
-{
+void aff_Accel(void) {
   sensor_t sensor;
   accel.getSensor(&sensor);
   aff_cls();
@@ -936,8 +933,7 @@ void aff_Accel(void)
   tft.println(String::format("Resolution: %5.1f m/s^2",sensor.resolution));
   aff_Entete();
 }
-void aff_Gyro(void)
-{
+void aff_Gyro(void) {
   sensor_t sensor;
   gyro.getSensor(&sensor);
   aff_cls();
