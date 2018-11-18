@@ -106,10 +106,10 @@ sensor_t sensor;
 //--
 Timer tm_cloud(20000,Cloud);
 bool tm_b_cloud = false;
-int tm_cloud_rot = 0x00;
+int tm_cloud_rot = 0x0;
 Timer tm_cycle(10000,Cycle);
 bool tm_b_cycle = false;
-int tm_cycle_rot = 0x00;
+int tm_cycle_rot = 0x0;
 Timer tm_aff(150000,Aff);
 bool tm_b_aff = true;
 //--------------------- timer CLOUD : every 20 sec. ---
@@ -313,7 +313,7 @@ void loop() {
       tm_b_cycle = false;
       tft.fillScreen(ST7735_BLACK);
       aff_Entete();
-      switch(tm_cloud_rot++) {
+      switch(tm_cycle_rot++) {
           case 0x00:
             aff_Status(20,20,"RiCam");
             aff_Status(35,20," .   : defilement");
@@ -347,7 +347,7 @@ void loop() {
             aff_Gyro();
             break;
           default :
-            aff_Mosaic();tm_cloud_rot=0; break;
+            aff_Mosaic();tm_cycle_rot=0; break;
       }
   }
    //-------------------------------------------------------------- CLOUD -------
@@ -358,7 +358,7 @@ void loop() {
     //-- webhook : toutes les variables commencent par Rky_
     //--
     if (tm_b_cloud) {
-        aff_Code("(.)");
+        aff_Code("+  ");
         bmp.getEvent(&event);
         if (event.pressure)
         {
@@ -373,25 +373,25 @@ void loop() {
                 Particle.publish("Rky_I",String(illumination),60,PUBLIC);
                 break;
             case 0x01 :
-                //Particle.publish("Rky_r",String(red),60,PUBLIC);
+                Particle.publish("Rky_r",String(red),60,PUBLIC);
                 break;
             case 0x02 :
-                //Particle.publish("Rky_g",String(green),60,PUBLIC);
+                Particle.publish("Rky_g",String(green),60,PUBLIC);
                 break;
             case 0x03 :
-                //Particle.publish("Rky_b",String(blue),60,PUBLIC);
+                Particle.publish("Rky_b",String(blue),60,PUBLIC);
                 break;
             case 0x04 :
-                //Particle.publish("Rky_N",String(noise),60,PUBLIC);
+                Particle.publish("Rky_Ya",String(heading),60,PUBLIC);
                 break;
             case 0x05 :
                 Particle.publish("Rky_Lu",String(luminosite),60,PUBLIC);
                 break;
             case 0x06 :
-                //Particle.publish("Rky_Pi",String(pitch),60,PUBLIC);
+                Particle.publish("Rky_Pi",String(pitch),60,PUBLIC);
                 break;
             case 0x07 :
-                //Particle.publish("Rky_Ro",String(roll),60,PUBLIC);
+                Particle.publish("Rky_Ro",String(roll),60,PUBLIC);
                 break;
             case 0x08 :
                 Particle.publish("Rky_T",String(temperature),60,PUBLIC);
