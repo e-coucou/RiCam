@@ -4,6 +4,7 @@
 #if defined TFT
   #include "tft.h"
 #endif
+#include "IO.h"
 #include "Adafruit_10DOF_IMU.h"
 #include "neopixel.h"
 #include "Adafruit_TCS34725.h"
@@ -103,6 +104,10 @@ Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(30301);
 Adafruit_LSM303_Mag_Unified   mag   = Adafruit_LSM303_Mag_Unified(30302);
 Adafruit_L3GD20_Unified       gyro  = Adafruit_L3GD20_Unified(20);
 sensor_t sensor;
+// BME 280
+#define SEALEVELPRESSURE_HPA (1013.25)
+double bme_h,bme_t,bme_a,bme_p;
+BME280 bme;
 //--
 Timer tm_cloud(20000,Cloud);
 bool tm_b_cloud = false;
@@ -139,6 +144,9 @@ void setup() {
   Particle.variable("illumination",illumination);
   Particle.variable("temperature",temperature);
   Particle.variable("pression",pression);
+  Particle.variable("BME-pression",bme_p);
+  Particle.variable("BME-temp",bme_t);
+  Particle.variable("BME-humidite",bme_h);
   Wire.setSpeed(CLOCK_SPEED_100KHZ);
   Wire.begin();
   lampe.begin();
@@ -158,11 +166,13 @@ void setup() {
     copyright();
     delay(3000);
   #endif
+  System.on(button_final_click, button_clicked);
   tm_cloud.start();
   tm_aff.start();
   tm_cycle.start();
   // les capteurs ...
     bmp.begin();
+    bme.begin(); // Init BME280 : pressure / altimetre / temperature / humidite
     if (!gyro.begin()) {    tft.println("gyro not started");    }
     accel.begin();
     mag.enableAutoRange(true);
@@ -362,12 +372,17 @@ void loop() {
         bmp.getEvent(&event);
         if (event.pressure)
         {
+            aff_Code("p  ");
             float tempe;
+            pression = double(event.pressure);
             /* Display ambient temperature in C */
             bmp.getTemperature(&tempe);
             temperature = double(tempe);
-            pression = double(event.pressure);
         }
+        bme_t = (double)bme.readTemperature();
+        bme_h = (double)bme.readHumidity();
+        bme_p = (double)bme.readPressure()/100.0;
+        bme_a = (double)bme.readAltitude(SEALEVELPRESSURE_HPA);
         switch(tm_cloud_rot++) {
             case 0x00 :
                 Particle.publish("Rky_I",String(illumination),60,PUBLIC);
@@ -397,10 +412,10 @@ void loop() {
                 Particle.publish("Rky_T",String(temperature),60,PUBLIC);
                 break;
             case 0x09 :
-                //Particle.publish("Rky_H",String(bme_h),60,PUBLIC);
+                Particle.publish("Rky_H",String(bme_h),60,PUBLIC);
                 break;
             case 0x0A :
-                Particle.publish("Rky_P",String(pression),60,PUBLIC);
+                Particle.publish("Rky_P",String(bme_p),60,PUBLIC);
                 break;
             case 0x0B :
                 Particle.publish("Rky_Lm",String(lumiere),60,PUBLIC);
@@ -623,11 +638,14 @@ void aff_Compteur(float val, char *mesure, float r) {
 }
 void aff_Capteur() {
     aff_Titre("Capteurs");
-    aff_Rect(0,0,String::format("%3.0f°C",temperature));
+    aff_Rect(0,0,String::format("%4.1f°C",temperature));
     aff_Rect(0,1,String::format(" L = %4.0f",luminosite));
     aff_Rect(1,0,String::format("%4.0f hPa",pression));
+    aff_Rect(1,1,String::format("%4.0f hPa",bme_p));
     aff_Rect(2,0,String::format("%4.1f ",roll));
+    aff_Rect(2,1,String::format("%4.1f ",heading));
     aff_Rect(3,0,String::format("%4.1f ",pitch));
+    aff_Rect(3,1,String::format("%4.1f %%",bme_h));
 }
 void aff_Titre(char* titre) {
     tft.fillRect(1,20,tft.width()-2,19,ST7735_BLUE);
@@ -948,4 +966,23 @@ void aff_Gyro(void) {
   tft.println(String::format("Min: %5.1f rad/s",sensor.min_value));
   tft.println(String::format("Resolution: %5.1f rad/s",sensor.resolution));
   aff_Entete();
+}
+//-------------------------------------------------------------- MODE Button ---
+void button_clicked(system_event_t event, int param)
+{
+    int times = system_button_clicks(param);
+    aff_cls();
+    RGB.control(true);
+    if (times == 1) {
+        if (mode == MODE_MENU) {
+            RGB.color(0, 128, 255);
+            mode = MODE_CYCLE;
+        } else {
+            RGB.color(255, 0, 255);
+            mode = MODE_MENU;
+            menuC = 5; menuS = 1; menu = 1;
+            affMenu(menuC,&menu_principal[0]);
+        }
+    }
+    b_refresh = false;
 }
