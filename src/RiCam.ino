@@ -229,18 +229,18 @@ void loop() {
    } else {
       Lamp_color(0x0,0xFFFF); 
   }
-  if (tm_b_aff) {
+  if (tm_b_aff) { //request data from Accuweather
       aff_Code("...");
       getRequest();
       tm_b_aff = false;
   }
   if (b_Message) {
-      aff_Click(szMessage);
+        aff_Click(szMessage);
+        b_Message = false;
   }
   //----------------------------------------------------------------- le Bouton -------------
     down.Update();
     if (down.clicks !=0) {
-        b_Message = false;
         Button = down.clicks;
         tm_cycle.reset(); b_Message=false;
         switch (Button) {
@@ -254,14 +254,7 @@ void loop() {
                 bouton3();
                 break;
             case -1 : // 1 long : on switch sur le mode menu
-                aff_cls();
-                if (mode == MODE_MENU) {
-                    mode = MODE_CYCLE;
-                } else {
-                    mode = MODE_MENU;
-                    menuC = 5; menuS = 1; menu = 1;
-                }
-                b_refresh = false;
+                bouton1L();
                 break;
         }
         Button = 0x00;
@@ -769,51 +762,6 @@ int WebCde(String  Cde) {
     Particle.publish("Status", szMess);
     return commande;
 } // end WebCde
-//------------------------------------------------------------------ BOUTONS -----
-void bouton1() {
-    switch (mode) {
-        case MODE_CYCLE:
-            if (Lamp_on) {
-                Lamp_w = (Lamp_w+1) % 13;
-                Lamp_couleur = Lamp_l[Lamp_w] << 24;
-                Lamp_color(Lamp_couleur,Lamp_mask);
-            } else {
-                tm_b_cycle = true; 
-            }
-            break;
-        case MODE_LAMPE:
-            break;
-        case MODE_MENU:
-            menuS = (menuS % menuC) +1;
-            menu = (menu & 0xFFF0) + (((menu&0x000f) % menuC) + 1);
-            //menu = (menu & 0xFF00) + (((menu & 0x00FF) + 1) % m_count);
-            //wait_start = 0x00;
-            break;
-    }
-}
-void bouton2() {
-    switch (mode) {
-        case MODE_CYCLE:
-            Lamp_auto = !Lamp_auto;
-            Lamp_on = true;
-            break;
-        case MODE_LAMPE:
-            // change couleur
-            break;
-        case MODE_MENU:
-            menuO = menu;
-            menu *= 0x10;
-            //menu = (menu & 0xFF00) + (((menu & 0x00FF) + 1) % m_count);
-            //wait_start = 0x00;
-            break;
-    }
-}
-void bouton3() {
-    Lamp_on = !Lamp_on;
-}
-void bouton1L() {
-
-}
 //------------------------------------------------------------ MENU -------
 void affMenu(short l, char* menutxt[] ) {
     aff_Entete();
@@ -967,22 +915,81 @@ void aff_Gyro(void) {
   tft.println(String::format("Resolution: %5.1f rad/s",sensor.resolution));
   aff_Entete();
 }
+//------------------------------------------------------------------ BOUTONS -----
+void bouton1() {
+    switch (mode) {
+        case MODE_CYCLE:
+            if (Lamp_on) {
+                Lamp_w = (Lamp_w+1) % 13;
+                Lamp_couleur = Lamp_l[Lamp_w] << 24;
+                Lamp_color(Lamp_couleur,Lamp_mask);
+            } else {
+                tm_b_cycle = true; 
+            }
+            break;
+        case MODE_LAMPE:
+            break;
+        case MODE_MENU:
+            menuS = (menuS % menuC) +1;
+            menu = (menu & 0xFFF0) + (((menu&0x000f) % menuC) + 1);
+            //menu = (menu & 0xFF00) + (((menu & 0x00FF) + 1) % m_count);
+            //wait_start = 0x00;
+            break;
+    }
+}
+void bouton2() { //plein de fonctions ...
+    switch (mode) {
+        case MODE_CYCLE:
+            Lamp_auto = !Lamp_auto;
+            Lamp_on = true;
+            break;
+        case MODE_LAMPE:
+            // change couleur
+            break;
+        case MODE_MENU: //ENTER
+            menuO = menu;
+            menu *= 0x10;
+            //menu = (menu & 0xFF00) + (((menu & 0x00FF) + 1) % m_count);
+            //wait_start = 0x00;
+            break;
+    }
+}
+void bouton3() { // switch Lampe on/off
+    Lamp_on = !Lamp_on;
+}
+void bouton1L() { //switch mode MENU
+    aff_cls();
+    if (mode == MODE_MENU) {
+        mode = MODE_CYCLE;
+    } else {
+        mode = MODE_MENU;
+        menuC = 5; menuS = 1; menu = 1;
+    }
+    b_refresh = false;
+}
 //-------------------------------------------------------------- MODE Button ---
 void button_clicked(system_event_t event, int param)
 {
     int times = system_button_clicks(param);
-    aff_cls();
+    tm_cycle.reset(); aff_cls();
     RGB.control(true);
-    if (times == 1) {
+    switch(times) {
+    case 1:
+        RGB.color(0, 128, 255);
         if (mode == MODE_MENU) {
-            RGB.color(0, 128, 255);
-            mode = MODE_CYCLE;
+            bouton2(); // ENTER
         } else {
-            RGB.color(255, 0, 255);
-            mode = MODE_MENU;
-            menuC = 5; menuS = 1; menu = 1;
-            affMenu(menuC,&menu_principal[0]);
+            bouton3();
+//            affMenu(menuC,&menu_principal[0]);
         }
+        break;
+    case 2:
+        RGB.color(255, 0, 255);
+        if (mode == MODE_MENU) {
+            bouton1L(); // retour mode CYCLE
+        } else {
+            bouton2(); // mode AUTO
+        }
+        break;
     }
-    b_refresh = false;
 }
