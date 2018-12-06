@@ -15,7 +15,7 @@
 #define NAME "RiCam"
 #define AUTEUR "eCoucou"
 #define VERSION_MAJ 0
-#define VERSION_MIN 4
+#define VERSION_MIN 5
 #define RELEASE "oct. 2018"
 #define CREATE "oct. 2018"
 /* 
@@ -30,7 +30,7 @@
 		      |  MISO   -|A4          D4|- CS  | TFT
 	 SCL	  |  SCHK	-|A3          D3|- ALERT interrupt from MAX17043 (optional solder bridge)
            Arducam | SS -|A2          D2|- DC  | TFT
-				        -|A1          D1|- SCL |- I2C channel + Gyro
+				        -|A1          D1|- SCL |- I2C channel + Gyro + BME280
 				        -|A0          D0|- SDA |
 				          \____________/ 
 */
@@ -793,9 +793,9 @@ void aff_Rect(uint8_t n, uint8_t s, String szMess) {
 void refresh() {
     tft.setTextSize(1);
     tft.setTextColor(ST7735_WHITE,ST7735_BLUE);
-//    refreshCapteur(0,0,String::format("%3.0f degC",temperature));
-//    refreshCapteur(0,1,String::format(" L = %4.0f",luminosite));
-//    refreshCapteur(1,0,String::format("%4.0f hPa",pression));
+    //    refreshCapteur(0,0,String::format("%3.0f degC",temperature));
+    //    refreshCapteur(0,1,String::format(" L = %4.0f",luminosite));
+    //    refreshCapteur(1,0,String::format("%4.0f hPa",pression));
     refreshCapteur(2,0,String::format("%4.1f ",roll));
     refreshCapteur(2,1,String::format("%4.1f ",pitch));
     refreshCapteur(3,0,String::format("%4.1f ",heading));
@@ -852,19 +852,19 @@ void getAccelgyro() {
 void updateYPR() {
     float apha = 0.93;  //0.96 ou 0.93 suivant plusieurs sources
         //conversion accel en angles
-//            a_ay = -atan(f_ax/sqrt(pow(f_ay,2) + pow(f_az,2))) *180.0 / M_PI; // en deg
-//            a_ax = atan(f_ay/sqrt(pow(f_ax,2) + pow(f_az,2)))*180.0 / M_PI;
-//            a_az = atan((sqrt(pow(f_ax,2) + pow(f_ay,2)))/f_az)*180.0 / M_PI;
+    //            a_ay = -atan(f_ax/sqrt(pow(f_ay,2) + pow(f_az,2))) *180.0 / M_PI; // en deg
+    //            a_ax = atan(f_ay/sqrt(pow(f_ax,2) + pow(f_az,2)))*180.0 / M_PI;
+    //            a_az = atan((sqrt(pow(f_ax,2) + pow(f_ay,2)))/f_az)*180.0 / M_PI;
             a_ay = -atan(f_ax/sqrt(f_ay*f_ay + f_az*f_az)) * RAD_TO_DEG ; //180.0 / M_PI; // en deg -> pitch
             a_ax = atan(f_ay/sqrt(f_ax*f_ax + f_az*f_az))* RAD_TO_DEG; // -> roll
             a_az = atan((sqrt(f_ax*f_ax + f_ay*f_ay))/f_az)* RAD_TO_DEG; // -> yaw
-//#ifdef RESTRICT_PITCH // Eq. 25 and 26
-  roll = atan2(f_ay, f_az) * RAD_TO_DEG;
-  pitch = atan(-f_ax / sqrt(f_ay * f_ay + f_az * f_az)) * RAD_TO_DEG;
-//#else // Eq. 28 and 29
-//  roll = atan(accY / sqrt(f_ax * f_ax + f_az * f_az)) * 180/M_PI;
-//  pitch = atan2(-f_ax, f_az) * 180/M_PI;
-//#endif
+    //#ifdef RESTRICT_PITCH // Eq. 25 and 26
+    roll = atan2(f_ay, f_az) * RAD_TO_DEG;
+    pitch = atan(-f_ax / sqrt(f_ay * f_ay + f_az * f_az)) * RAD_TO_DEG;
+    //#else // Eq. 28 and 29
+    //  roll = atan(accY / sqrt(f_ax * f_ax + f_az * f_az)) * 180/M_PI;
+    //  pitch = atan2(-f_ax, f_az) * 180/M_PI;
+    //#endif
 }
 //---------------------------------------------------------------- SENSOR ---
 void aff_Mag(void) {
