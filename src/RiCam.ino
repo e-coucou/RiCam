@@ -76,8 +76,7 @@ uint16_t w = 0x0000;
 uint32_t Lamp_couleur=0x0010FF00,Lamp_mask=0xFFFF,wait_start; // Neo_color : 0xWWGGRRBB
 char tour=0;
 char Lamp_w = 12;
-bool Lamp_on = false;
-bool Lamp_auto = true;
+bool Lamp_on = false, Lamp_auto = true, b_action=false, b_Lamp=true;
 static const byte Lamp_l[13] = { 0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 255 };
 static const byte Lamp_c[8] = { 0, 35, 70, 105, 140, 175, 210, 255 };
 #if defined TFT
@@ -178,6 +177,7 @@ void setup() {
     mag.enableAutoRange(true);
     if (!mag.begin()) {    tft.println("mag not started"); }
   aff_Mosaic();
+  RGB.control(true);
   delay(3000);
 }
 //---------------------------------------
@@ -218,16 +218,21 @@ void loop() {
     }
     if ((millis() % 1000) >= 900) {
         aff_Seconde();
+        tft.setTextSize(1);
+        tft.setCursor(120,110);tft.println(String::format("%4.0f",heading));
     }
-  // Gestion de l'allumage de la Lampe  
-  if ( Lamp_on) {
-      if (Lamp_auto & alert_illum) {
-        Lamp_color(lumiere << 24,0xFFFF);
+  // Gestion de l'allumage de la Lampe
+  if (b_Lamp) {
+      b_Lamp=false;
+      if (Lamp_on) {
+          if (Lamp_auto & alert_illum) {
+            Lamp_color(lumiere << 24,0xFFFF);
+          } else {
+            Lamp_color(Lamp_couleur,Lamp_mask);
+          }
       } else {
-        Lamp_color(Lamp_couleur,Lamp_mask);
+        Lamp_color(0x0,0xFFFF); 
       }
-   } else {
-      Lamp_color(0x0,0xFFFF); 
   }
   if (tm_b_aff) { //request data from Accuweather
       aff_Code("...");
@@ -259,13 +264,17 @@ void loop() {
         }
         Button = 0x00;
         down.clicks = 0;
+        b_action = true;
+    }
+    if (b_action) {
+        b_action=false;
         if (mode == MODE_MENU) {
           switch (menu) {
             case 0x50: // Exit menu, retour au mode Cycle
                 mode = MODE_CYCLE;
                 tm_b_cycle = true;
                 break;
-            case 0x0130: case 0x330: case 0x0230: 
+            case 0x0130: case 0x330: case 0x0240: 
                 menuC = 5; menuS = 1; menu = 1;
             case 0 : menu=1; menuS = 1;
             case 1 : // Capteurs
@@ -421,7 +430,6 @@ void loop() {
 //-------------------------------------------------------- Gestion des animations LAMPE ----
 void rainbow(uint8_t wait) {
   uint16_t i, j;
-
   for(j=0; j<256; j++) {
     for(i=0; i<lampe.numPixels(); i++) {
       lampe.setPixelColor(i, Wheel((i+j) & 255));
@@ -737,7 +745,7 @@ int WebCde(String  Cde) {
             commande  = arg[0] & 0xFF;
             Lamp_couleur = (arg[0] << 24) + (arg[1] << 16) + (arg[2] << 8) + arg[3];
             Lamp_auto = false;
-            Lamp_on = true;
+            Lamp_on = true; b_Lamp=true;
             sprintf(szMess,"Change la couleur wgrb : %X:%X:%X:%X",arg[0],arg[1],arg[2],arg[3]);
             break;
         case 0xB0: // affiche un message sur l'écran
@@ -747,10 +755,12 @@ int WebCde(String  Cde) {
         case 0xF0:// On/Off de la lampe
             Lamp_on = !Lamp_on;
             sprintf(szMess,"Switch on/off %s",Lamp_on ? "on":"off");
+            b_Lamp=true;
             break;
         case 0xF1:// On/Off mode auto de la lampe
             Lamp_auto = !Lamp_auto;
             sprintf(szMess,"Switch mode auto %s",Lamp_auto ? "on" : "off");
+            b_Lamp=true;
             break;
         default:
             break;
@@ -814,8 +824,6 @@ void getCompass() {
     // Normalize to 0-360
     if (heading < 0)
         {    heading = 360 + heading;}
-    tft.setTextSize(1);
-    tft.setCursor(120,110);tft.println(String::format("%4.0f",heading));
     /* Display the results (acceleration is measured in m/s^2) */
     accel.getEvent(&event);
     if (dof.accelGetOrientation(&event, &orientation))
@@ -941,10 +949,11 @@ void bouton2() { //plein de fonctions ...
     switch (mode) {
         case MODE_CYCLE:
             Lamp_auto = !Lamp_auto;
-            Lamp_on = true;
+            Lamp_on = true; b_Lamp=true;
             break;
         case MODE_LAMPE:
             // change couleur
+            b_Lamp=true;
             break;
         case MODE_MENU: //ENTER
             menuO = menu;
@@ -955,7 +964,7 @@ void bouton2() { //plein de fonctions ...
     }
 }
 void bouton3() { // switch Lampe on/off
-    Lamp_on = !Lamp_on;
+    Lamp_on = !Lamp_on; b_Lamp=true;
 }
 void bouton1L() { //switch mode MENU
     aff_cls();
@@ -971,8 +980,9 @@ void bouton1L() { //switch mode MENU
 void button_clicked(system_event_t event, int param)
 {
     int times = system_button_clicks(param);
-    tm_cycle.reset(); aff_cls();
-    RGB.control(true);
+    tm_cycle.reset();
+    noInterrupts();
+    b_action=true;
     switch(times) {
     case 1:
         RGB.color(0, 128, 255);
@@ -992,4 +1002,5 @@ void button_clicked(system_event_t event, int param)
         }
         break;
     }
+    interrupts();
 }
